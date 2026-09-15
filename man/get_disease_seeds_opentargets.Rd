@@ -5,12 +5,12 @@
 \title{Derive Disease Seed Genes from Open Targets}
 \usage{
 get_disease_seeds_opentargets(
-    disease_term,
-    max_seeds = 100,
-    min_score = 0.1,
-    use_cache = TRUE,
-    force_refresh = FALSE,
-    verbose = TRUE
+  disease_term,
+  max_seeds = 100,
+  min_score = 0.1,
+  use_cache = TRUE,
+  force_refresh = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{

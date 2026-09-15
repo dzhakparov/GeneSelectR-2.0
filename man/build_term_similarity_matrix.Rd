@@ -5,13 +5,13 @@
 \title{Build (or Load) the Square Term-by-Term Similarity Matrix}
 \usage{
 build_term_similarity_matrix(
-    term_universe,
-    ic_scores,
-    ancestor_map,
-    method = "resnik",
-    ontology = "BP",
-    use_cache = TRUE,
-    verbose = TRUE
+  term_universe,
+  ic_scores,
+  ancestor_map,
+  method = "resnik",
+  ontology = "BP",
+  use_cache = TRUE,
+  verbose = TRUE
 )
 }
 \arguments{

@@ -1,5 +1,11 @@
 ^FitSelect\.Rproj$
+^GeneSelectR2\.Rproj$
 ^\.Rproj\.user$
+^\.git$
+^\.Rcheck$
+^GeneSelectR2\.Rcheck$
+^\.DS_Store$
+^\.Rhistory$
 ^LICENSE\.md$
 ^README\.Rmd$
 ^\.github$

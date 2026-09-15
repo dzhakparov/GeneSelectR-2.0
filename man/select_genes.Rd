@@ -2,20 +2,20 @@
 % Please edit documentation in R/select_genes.R
 \name{select_genes}
 \alias{select_genes}
-\title{Run the predictive GeneSelectR workflow}
+\title{Run the predictive GeneSelectR 2.0 workflow}
 \usage{
 select_genes(
-    x,
-    outcome,
-    assay_name = "log_expression",
-    n_genes = 20L,
-    alpha = c(0.5, 1),
-    B = 50L,
-    permutations = 20L,
-    null_B = 20L,
-    k_folds = 5L,
-    seed = 123L,
-    workers = 1L
+  x,
+  outcome,
+  assay_name = "log_expression",
+  n_genes = 20L,
+  alpha = c(0.5, 1),
+  B = 50L,
+  permutations = 20L,
+  null_B = 20L,
+  k_folds = 5L,
+  seed = 123L,
+  workers = 1L
 )
 }
 \arguments{
@@ -44,7 +44,7 @@ colData column for a SummarizedExperiment. The second level is positive.}
 \item{workers}{Number of fitting workers. Default one.}
 }
 \value{
-A geneselectr_result containing gene_scores, parameters, cv_results
+A geneselectr2_result containing gene_scores, parameters, cv_results
 and stability, with additional selected_genes and alpha_comparison fields.
 selected_genes contains the first n_genes gene names from the ranking.
 }

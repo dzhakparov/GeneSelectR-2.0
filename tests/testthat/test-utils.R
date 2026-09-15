@@ -30,7 +30,7 @@ test_that("the Nogueira index is one for identical selected sets", {
 test_that("outcome adjustment is gene specific and bounded", {
     observed <- c(0.8, 0.8)
     null <- rbind(c(0.2, 0.6), c(0.2, 0.6))
-    adjusted <- GeneSelectR:::calibrate_by_null(
+    adjusted <- GeneSelectR2:::calibrate_by_null(
         observed, null, epsilon = 0.01, winsorize_at = 2
     )
     expect_gt(adjusted[1], adjusted[2])
@@ -43,6 +43,6 @@ test_that("AUC preserves the specified class direction", {
         c("control", "control", "case", "case"),
         levels = c("control", "case")
     )
-    expect_equal(GeneSelectR:::compute_auc(y, c(0.9, 0.8, 0.2, 0.1)), 0)
-    expect_equal(GeneSelectR:::compute_auc(y, c(0.1, 0.2, 0.8, 0.9)), 1)
+    expect_equal(GeneSelectR2:::compute_auc(y, c(0.9, 0.8, 0.2, 0.1)), 0)
+    expect_equal(GeneSelectR2:::compute_auc(y, c(0.1, 0.2, 0.8, 0.9)), 1)
 })

@@ -5,11 +5,11 @@
 \title{Plot biological assessment against matched random gene sets}
 \usage{
 plot_biology_comparison(
-    x,
-    method = "GeneSelectR",
-    measures = NULL,
-    dataset_order = NULL,
-    colour_limit = NULL
+  x,
+  method = "GeneSelectR 2.0",
+  measures = NULL,
+  dataset_order = NULL,
+  colour_limit = NULL
 )
 }
 \arguments{
@@ -34,5 +34,5 @@ Biological measurements remain separate and are not averaged.
 }
 \examples{
 data(benchmark_biology)
-plot_biology_comparison(benchmark_biology, method = "GeneSelectR")
+plot_biology_comparison(benchmark_biology, method = "GeneSelectR 2.0")
 }

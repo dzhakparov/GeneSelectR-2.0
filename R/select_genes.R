@@ -1,4 +1,4 @@
-#' Run the predictive GeneSelectR workflow
+#' Run the predictive GeneSelectR 2.0 workflow
 #'
 #' Rank genes with repeated elastic-net inclusion and excluded-sample
 #' contribution. Biological annotations are applied downstream and do not enter
@@ -18,7 +18,7 @@
 #' @param seed Random seed, restored on return.
 #' @param workers Number of fitting workers. Default one.
 #'
-#' @return A geneselectr_result containing gene_scores, parameters, cv_results
+#' @return A geneselectr2_result containing gene_scores, parameters, cv_results
 #'   and stability, with additional selected_genes and alpha_comparison fields.
 #'   selected_genes contains the first n_genes gene names from the ranking.
 #' @details Input must already be normalized. Select variable genes and fit

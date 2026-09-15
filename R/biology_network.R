@@ -454,8 +454,8 @@ score_network_layer <- function(genes,
     # STRING reference files are large. Store them in a persistent directory
     # and allow enough time for the initial download.
     string_cache_dir <- getOption(
-        "GeneSelectR.string_cache",
-        file.path(path.expand("~"), ".cache", "GeneSelectR", "stringdb")
+        "GeneSelectR2.string_cache",
+        file.path(path.expand("~"), ".cache", "GeneSelectR2", "stringdb")
     )
     dir.create(string_cache_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -487,9 +487,9 @@ score_network_layer <- function(genes,
             "_s", string_score_threshold
         )
         offline_resources <- if (
-            exists(offline_key, envir = .geneselectr_cache)
+            exists(offline_key, envir = .geneselectr2_cache)
         ) {
-            get(offline_key, envir = .geneselectr_cache)
+            get(offline_key, envir = .geneselectr2_cache)
         } else {
             info_file <- file.path(
                 string_cache_dir,
@@ -542,7 +542,7 @@ score_network_layer <- function(genes,
                 ),
                 graph = offline_graph
             )
-            assign(offline_key, resources, envir = .geneselectr_cache)
+            assign(offline_key, resources, envir = .geneselectr2_cache)
             resources
         }
         mapped_ids <- unname(offline_resources$symbol_to_id[all_symbols])

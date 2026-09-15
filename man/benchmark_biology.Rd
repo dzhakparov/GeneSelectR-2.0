@@ -10,7 +10,7 @@ go_ratio, hallmark_ratio, open_targets_05_ratio and
 open_targets_10_ratio.
 }
 \source{
-GeneSelectR benchmark result tables verified 10 September 2026.
+GeneSelectR 2.0 benchmark result tables verified 10 September 2026.
 }
 \usage{
 data(benchmark_biology)

@@ -6,7 +6,7 @@
 #' @keywords internal
 get_cache_dir <- function() {
     # CRAN-compliant cache directory
-    cache_dir <- tools::R_user_dir("GeneSelectR", "cache")
+    cache_dir <- tools::R_user_dir("GeneSelectR2", "cache")
 
     if (!dir.exists(cache_dir)) {
         dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
@@ -16,7 +16,7 @@ get_cache_dir <- function() {
 }
 
 # Global cache environment (package-level)
-.geneselectr_cache <- new.env(parent = emptyenv())
+.geneselectr2_cache <- new.env(parent = emptyenv())
 
 
 #' Load GO Annotations with Caching
@@ -54,11 +54,11 @@ load_go_cache <- function(organism = "human", force_reload = FALSE) {
     cache_file <- file.path(get_cache_dir(), paste0(cache_key, ".rds"))
 
     # Check memory cache first (fastest)
-    if (!force_reload && exists(cache_key, envir = .geneselectr_cache)) {
-        cached <- get(cache_key, envir = .geneselectr_cache)
+    if (!force_reload && exists(cache_key, envir = .geneselectr2_cache)) {
+        cached <- get(cache_key, envir = .geneselectr2_cache)
         # Guard: don't return empty cache from a previous failed download
         if (length(cached) > 0) {
-            if (getOption("geneselectr.verbose", TRUE)) {
+            if (getOption("geneselectr2.verbose", TRUE)) {
                 message(sprintf(
                     "Using GO annotations from memory cache (%d genes)",
                     length(cached)
@@ -74,17 +74,17 @@ load_go_cache <- function(organism = "human", force_reload = FALSE) {
 
         # Guard: don't use empty disk cache
         if (length(go_data) > 0) {
-            if (getOption("geneselectr.verbose", TRUE)) {
+            if (getOption("geneselectr2.verbose", TRUE)) {
                 message(sprintf(
                     "Loading GO annotations from disk cache (%d genes)",
                     length(go_data)
                 ))
             }
-            assign(cache_key, go_data, envir = .geneselectr_cache)
+            assign(cache_key, go_data, envir = .geneselectr2_cache)
             return(go_data)
         } else {
             # Remove stale empty cache so we retry the download
-            if (getOption("geneselectr.verbose", TRUE)) {
+            if (getOption("geneselectr2.verbose", TRUE)) {
                 message(
                     "Found an empty GO cache on disk; rebuilding the cache."
                 )
@@ -94,7 +94,7 @@ load_go_cache <- function(organism = "human", force_reload = FALSE) {
     }
 
     # Build from database
-    if (getOption("geneselectr.verbose", TRUE)) {
+    if (getOption("geneselectr2.verbose", TRUE)) {
         message("Building GO annotation cache (one-time operation)...")
     }
 
@@ -102,14 +102,14 @@ load_go_cache <- function(organism = "human", force_reload = FALSE) {
 
     # Only cache if we got real data
     if (length(go_data) > 0) {
-        if (getOption("geneselectr.verbose", TRUE)) {
+        if (getOption("geneselectr2.verbose", TRUE)) {
             message(sprintf(
                 "Caching GO annotations for %d genes to disk",
                 length(go_data)
             ))
         }
         saveRDS(go_data, cache_file)
-        assign(cache_key, go_data, envir = .geneselectr_cache)
+        assign(cache_key, go_data, envir = .geneselectr2_cache)
     } else {
         annotation_message <- paste(
             "GO annotation loading returned no data for %s.",
@@ -169,7 +169,7 @@ download_go_annotations <- function(organism = "human") {
     # --- Extract all gene-to-GO mappings ---
     orgdb <- getExportedValue(org_pkg, org_pkg)
 
-    if (getOption("geneselectr.verbose", TRUE)) {
+    if (getOption("geneselectr2.verbose", TRUE)) {
         message(sprintf("  Extracting GO annotations from %s...", org_pkg))
     }
 
@@ -179,7 +179,7 @@ download_go_annotations <- function(organism = "human") {
             # AnnotationDbi returns SYMBOL, GO, EVIDENCE and ONTOLOGY columns.
             all_symbols <- AnnotationDbi::keys(orgdb, keytype = "SYMBOL")
 
-            if (getOption("geneselectr.verbose", TRUE)) {
+            if (getOption("geneselectr2.verbose", TRUE)) {
                 message(sprintf(
                     "  Found %d gene symbols in %s",
                     length(all_symbols), org_pkg
@@ -230,7 +230,7 @@ download_go_annotations <- function(organism = "human") {
             # Remove genes with no terms (safety check)
             go_cache <- go_cache[lengths(go_cache) > 0]
 
-            if (getOption("geneselectr.verbose", TRUE)) {
+            if (getOption("geneselectr2.verbose", TRUE)) {
                 n_genes <- length(go_cache)
                 n_terms <- length(unique(unlist(go_cache)))
                 median_terms <- median(lengths(go_cache))
@@ -285,19 +285,19 @@ load_ic_cache <- function(go_cache, force_reload = FALSE) {
     cache_file <- file.path(get_cache_dir(), paste0(cache_key, ".rds"))
 
     # Check memory cache
-    if (!force_reload && exists(cache_key, envir = .geneselectr_cache)) {
-        return(get(cache_key, envir = .geneselectr_cache))
+    if (!force_reload && exists(cache_key, envir = .geneselectr2_cache)) {
+        return(get(cache_key, envir = .geneselectr2_cache))
     }
 
     # Check disk cache
     if (!force_reload && file.exists(cache_file)) {
         ic_scores <- readRDS(cache_file)
-        assign(cache_key, ic_scores, envir = .geneselectr_cache)
+        assign(cache_key, ic_scores, envir = .geneselectr2_cache)
         return(ic_scores)
     }
 
     # Compute IC scores
-    if (getOption("geneselectr.verbose", TRUE)) {
+    if (getOption("geneselectr2.verbose", TRUE)) {
         message("Computing information content scores...")
     }
 
@@ -305,7 +305,7 @@ load_ic_cache <- function(go_cache, force_reload = FALSE) {
 
     # Save to cache
     saveRDS(ic_scores, cache_file)
-    assign(cache_key, ic_scores, envir = .geneselectr_cache)
+    assign(cache_key, ic_scores, envir = .geneselectr2_cache)
 
     return(ic_scores)
 }
@@ -393,7 +393,7 @@ clear_cache <- function(confirm = TRUE) {
     }
 
     # Clear memory cache
-    rm(list = ls(envir = .geneselectr_cache), envir = .geneselectr_cache)
+    rm(list = ls(envir = .geneselectr2_cache), envir = .geneselectr2_cache)
     message("Memory cache cleared")
 
     message("All caches cleared successfully")
@@ -420,7 +420,7 @@ cache_info <- function() {
         directory = cache_dir,
         files = file_table,
         total_size_bytes = sum(file_table$size_bytes),
-        memory_keys = ls(envir = .geneselectr_cache)
+        memory_keys = ls(envir = .geneselectr2_cache)
     )
 }
 
@@ -435,7 +435,7 @@ cache_info <- function() {
 #'
 #' @export
 set_cache_options <- function(verbose = TRUE) {
-    options(geneselectr.verbose = verbose)
+    options(geneselectr2.verbose = verbose)
 
     invisible(NULL)
 }

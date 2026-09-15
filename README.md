@@ -1,6 +1,6 @@
-# GeneSelectR
+# GeneSelectR 2.0
 
-GeneSelectR is an R workflow for predictive gene selection in binary-outcome
+GeneSelectR 2.0 is an R workflow for predictive gene selection in binary-outcome
 transcriptomic studies. `select_genes()` combines repeated elastic-net
 inclusion and excluded-sample predictive contribution after comparison with
 shuffled outcomes. The output retains both measurements for inspection.
@@ -17,13 +17,13 @@ install.packages(".", repos = NULL, type = "source")
 Following Bioconductor acceptance, the release version will be installed with:
 
 ```r
-BiocManager::install("GeneSelectR")
+BiocManager::install("GeneSelectR2")
 ```
 
 ## Asthma example
 
 ```r
-library(GeneSelectR)
+library(GeneSelectR2)
 
 data(asthma_example)
 fit <- select_genes(

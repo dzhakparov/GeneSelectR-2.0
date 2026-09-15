@@ -15,7 +15,7 @@ test_that("gene ranking plot uses fitted score columns", {
 })
 
 test_that("gene evidence plot preserves missing annotations", {
-    data("asthma_case_study", package = "GeneSelectR")
+    data("asthma_case_study", package = "GeneSelectR2")
     file <- tempfile(fileext = ".pdf")
     grDevices::pdf(file, width = 10, height = 5)
     shown <- plot_gene_evidence(asthma_case_study, comparison_label = "DGE")
@@ -25,10 +25,10 @@ test_that("gene evidence plot preserves missing annotations", {
 })
 
 test_that("biological assessment plot uses separate ratios", {
-    data("benchmark_biology", package = "GeneSelectR")
+    data("benchmark_biology", package = "GeneSelectR2")
     file <- tempfile(fileext = ".pdf")
     grDevices::pdf(file, width = 8, height = 6)
-    shown <- plot_biology_comparison(benchmark_biology, method = "GeneSelectR")
+    shown <- plot_biology_comparison(benchmark_biology, method = "GeneSelectR 2.0")
     grDevices::dev.off()
     expect_equal(nrow(shown), 7)
     expect_true(file.info(file)$size > 0)

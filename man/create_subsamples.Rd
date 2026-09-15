@@ -19,7 +19,7 @@ create_subsamples(y, B = 50L, random_seed = 123L, k_folds = 5L)
 List of training and excluded-sample index vectors.
 }
 \description{
-Repeated K-fold training sets are used by the implemented GeneSelectR
+Repeated K-fold training sets are used by the implemented GeneSelectR 2.0
 workflow. The training sets overlap, so recurrence is a descriptive ranking
 measurement.
 }

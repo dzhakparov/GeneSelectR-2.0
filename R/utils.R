@@ -1,4 +1,4 @@
-#' Validate GeneSelectR inputs
+#' Validate GeneSelectR 2.0 inputs
 #'
 #' @param X Numeric expression matrix with samples in rows.
 #' @param y Two-level factor.
@@ -149,7 +149,7 @@ compute_mi_vectorized <- function(X, y, n_bins = 5L) {
 
 #' Create repeated stratified cross-validation splits
 #'
-#' Repeated K-fold training sets are used by the implemented GeneSelectR
+#' Repeated K-fold training sets are used by the implemented GeneSelectR 2.0
 #' workflow. The training sets overlap, so recurrence is a descriptive ranking
 #' measurement.
 #'
@@ -274,7 +274,7 @@ compute_auc <- function(y_true, predictions) {
 #' Compute the Nogueira feature-selection stability index
 #'
 #' The index is calculated from repeated selected sets. Repeated K-fold
-#' training sets overlap, so the value is descriptive for GeneSelectR results.
+#' training sets overlap, so the value is descriptive for GeneSelectR 2.0 results.
 #'
 #' @param selection_matrix Logical matrix with genes in rows and fits in
 #'   columns.

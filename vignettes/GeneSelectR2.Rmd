@@ -1,12 +1,12 @@
 ---
-title: "GeneSelectR workflow"
+title: "GeneSelectR 2.0 workflow"
 author: "Damir Zhakparov"
 date: "`r Sys.Date()`"
 output:
     BiocStyle::html_document:
         toc: true
 vignette: >
-    %\VignetteIndexEntry{GeneSelectR workflow}
+    %\VignetteIndexEntry{GeneSelectR 2.0 workflow}
     %\VignetteEngine{knitr::rmarkdown}
     %\VignetteEncoding{UTF-8}
 ---
@@ -17,7 +17,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
 # Introduction
 
-GeneSelectR ranks genes for a binary outcome. The result contains recurrence
+GeneSelectR 2.0 ranks genes for a binary outcome. The result contains recurrence
 across repeated elastic-net models, excluded-sample predictive contribution,
 shuffled-outcome-adjusted measurements, and the combined ranking. Biological
 interpretation is performed after gene ranking. This vignette uses a compact
@@ -28,7 +28,7 @@ simulated dataset so that the code is evaluated during package checks.
 After Bioconductor acceptance:
 
 ```{r installation, eval=FALSE}
-BiocManager::install("GeneSelectR")
+BiocManager::install("GeneSelectR2")
 ```
 
 # Input
@@ -37,7 +37,7 @@ The expression matrix has samples in rows and genes in columns. The outcome is
 a two-level factor.
 
 ```{r data}
-library(GeneSelectR)
+library(GeneSelectR2)
 
 set.seed(10)
 n <- 40

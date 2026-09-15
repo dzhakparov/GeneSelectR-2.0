@@ -1,4 +1,4 @@
-name: GeneSelectR-Docker-Deploy
+name: GeneSelectR2-Docker-Deploy
 
 on:
   push:
@@ -37,4 +37,4 @@ jobs:
         context: ./inst/docker
         file: ./inst/docker/Dockerfile
         push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/geneselectr-image:${{ steps.get-tag.outputs.tag }}
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/geneselectr2-image:${{ steps.get-tag.outputs.tag }}

@@ -1,0 +1,92 @@
+---
+title: "GeneSelectR workflow"
+author: "Damir Zhakparov"
+date: "`r Sys.Date()`"
+output:
+    BiocStyle::html_document:
+        toc: true
+vignette: >
+    %\VignetteIndexEntry{GeneSelectR workflow}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+# Introduction
+
+GeneSelectR ranks genes for a binary outcome. The result contains recurrence
+across repeated elastic-net models, excluded-sample predictive contribution,
+shuffled-outcome-adjusted measurements, and the combined ranking. Biological
+interpretation is performed after gene ranking. This vignette uses a compact
+simulated dataset so that the code is evaluated during package checks.
+
+# Installation
+
+After Bioconductor acceptance:
+
+```{r installation, eval=FALSE}
+BiocManager::install("GeneSelectR2")
+```
+
+# Input
+
+The expression matrix has samples in rows and genes in columns. The outcome is
+a two-level factor.
+
+```{r data}
+library(GeneSelectR2)
+
+set.seed(10)
+n <- 40
+p <- 20
+X <- matrix(rnorm(n * p), nrow = n, ncol = p)
+colnames(X) <- paste0("gene", seq_len(p))
+y <- factor(
+    rep(c("control", "case"), each = n / 2),
+    levels = c("control", "case")
+)
+X[y == "case", 1:3] <- X[y == "case", 1:3] + 1
+```
+
+# Model fitting
+
+The settings below use five stratified folds. Specify the gene-set size and
+resampling settings before an analysis.
+
+```{r fit}
+fit <- geneselectr2_fit(
+    X,
+    y,
+    B = 5,
+    permutations = 2,
+    null_B = 5,
+    verbose = FALSE
+)
+```
+
+# Results
+
+`gene_scores` contains one row per input gene. The table retains every
+measurement used to create the ranking.
+
+```{r results}
+head(fit$gene_scores[, c(
+    "gene", "recurrence", "adjusted_contribution", "final_score"
+)])
+fit$stability["nogueira_index"]
+fit$cv_results[c("mean_auc", "sd_auc", "n_resamples")]
+```
+
+# Reproducibility
+
+The returned `parameters` element records the model settings. Analyses should
+also record the package version, R version, annotation-database versions, and
+external-resource retrieval dates.
+
+```{r provenance}
+fit$parameters
+sessionInfo()
+```

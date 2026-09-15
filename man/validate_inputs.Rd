@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{validate_inputs}
 \alias{validate_inputs}
-\title{Validate GeneSelectR inputs}
+\title{Validate GeneSelectR 2.0 inputs}
 \usage{
 validate_inputs(X, y, gene_names = NULL, min_per_class = 5L)
 }
@@ -19,6 +19,6 @@ validate_inputs(X, y, gene_names = NULL, min_per_class = 5L)
 \code{TRUE}, invisibly.
 }
 \description{
-Validate GeneSelectR inputs
+Validate GeneSelectR 2.0 inputs
 }
 \keyword{internal}

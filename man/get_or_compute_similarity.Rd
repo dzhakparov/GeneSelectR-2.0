@@ -5,12 +5,12 @@
 \title{Get or Compute GO Similarity with Caching}
 \usage{
 get_or_compute_similarity(
-    term1,
-    term2,
-    ic_scores,
-    cache,
-    ancestor_map = NULL,
-    sim_method = "resnik"
+  term1,
+  term2,
+  ic_scores,
+  cache,
+  ancestor_map = NULL,
+  sim_method = "resnik"
 )
 }
 \arguments{

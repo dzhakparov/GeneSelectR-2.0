@@ -7,6 +7,8 @@ Authors@R:
            email = "dzhakparov@gmail.com",
            role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7175-0843"))
+Author: Damir Zhakparov
+Maintainer: Damir Zhakparov <dzhakparov@gmail.com>
 Description: Provides a transcriptomics workflow for predictive gene ranking,
     repeated-selection information and biological interpretation. Elastic-net
     models are fitted across repeated stratified folds. Recurrence and
@@ -47,4 +49,4 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0

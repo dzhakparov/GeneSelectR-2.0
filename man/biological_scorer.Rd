@@ -5,20 +5,20 @@
 \title{Compute Biological Relevance Scores}
 \usage{
 biological_scorer(
-    genes,
-    mode = "supervised",
-    target_terms = NULL,
-    ontology = "BP",
-    sim_method = "resnik",
-    enrich_fdr = 0.05,
-    min_term_freq = NULL,
-    max_enriched_terms = 100,
-    n_top_sims = 5,
-    ic_quantile = 0.5,
-    enrichment_genes = NULL,
-    go_cache = NULL,
-    use_cache = TRUE,
-    organism = "human"
+  genes,
+  mode = "supervised",
+  target_terms = NULL,
+  ontology = "BP",
+  sim_method = "resnik",
+  enrich_fdr = 0.05,
+  min_term_freq = NULL,
+  max_enriched_terms = 100,
+  n_top_sims = 5,
+  ic_quantile = 0.5,
+  enrichment_genes = NULL,
+  go_cache = NULL,
+  use_cache = TRUE,
+  organism = "human"
 )
 }
 \arguments{

@@ -217,7 +217,7 @@ filter_go_cache_by_ontology <- function(go_cache, ontology = "BP") {
             # Remove genes with no remaining terms
             go_cache_out <- go_cache_out[lengths(go_cache_out) > 0]
 
-            if (getOption("geneselectr.verbose", FALSE)) {
+            if (getOption("geneselectr2.verbose", FALSE)) {
                 message(sprintf(
                     paste(
                         "  Ontology filter [%s]: %d -> %d terms,",
@@ -703,15 +703,15 @@ load_ancestor_map <- function(organism = "human", use_cache = TRUE) {
     go_version <- as.character(utils::packageVersion("GO.db"))
     cache_key <- paste0("go_ancestor_map_v2_", organism, "_", go_version)
 
-    if (use_cache && exists(cache_key, envir = .geneselectr_cache)) {
-        return(get(cache_key, envir = .geneselectr_cache))
+    if (use_cache && exists(cache_key, envir = .geneselectr2_cache)) {
+        return(get(cache_key, envir = .geneselectr2_cache))
     }
 
     if (use_cache) {
         cache_file <- file.path(get_cache_dir(), paste0(cache_key, ".rds"))
         if (file.exists(cache_file)) {
             ancestor_map <- readRDS(cache_file)
-            assign(cache_key, ancestor_map, envir = .geneselectr_cache)
+            assign(cache_key, ancestor_map, envir = .geneselectr2_cache)
             return(ancestor_map)
         }
     }
@@ -720,7 +720,7 @@ load_ancestor_map <- function(organism = "human", use_cache = TRUE) {
 
     if (requireNamespace("GO.db", quietly = TRUE) &&
         requireNamespace("AnnotationDbi", quietly = TRUE)) {
-        if (getOption("geneselectr.verbose", TRUE)) {
+        if (getOption("geneselectr2.verbose", TRUE)) {
             message("Building the GO ancestor map from GO.db...")
         }
 
@@ -745,7 +745,7 @@ load_ancestor_map <- function(organism = "human", use_cache = TRUE) {
             )
         }
 
-        if (getOption("geneselectr.verbose", TRUE)) {
+        if (getOption("geneselectr2.verbose", TRUE)) {
             message(sprintf(
                 "  Loaded ancestors for %d GO terms",
                 length(ancestor_map)
@@ -760,7 +760,7 @@ load_ancestor_map <- function(organism = "human", use_cache = TRUE) {
     if (use_cache && length(ancestor_map) > 0) {
         cache_file <- file.path(get_cache_dir(), paste0(cache_key, ".rds"))
         saveRDS(ancestor_map, cache_file)
-        assign(cache_key, ancestor_map, envir = .geneselectr_cache)
+        assign(cache_key, ancestor_map, envir = .geneselectr2_cache)
     }
 
     return(ancestor_map)

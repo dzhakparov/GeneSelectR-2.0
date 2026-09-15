@@ -5,14 +5,14 @@
 \title{Build (or Load) a Candidate-Term by Target-Term Similarity Matrix}
 \usage{
 build_target_similarity_matrix(
-    candidate_terms,
-    target_terms,
-    ic_scores,
-    ancestor_map,
-    method = "resnik",
-    ontology = "BP",
-    use_cache = TRUE,
-    verbose = TRUE
+  candidate_terms,
+  target_terms,
+  ic_scores,
+  ancestor_map,
+  method = "resnik",
+  ontology = "BP",
+  use_cache = TRUE,
+  verbose = TRUE
 )
 }
 \arguments{

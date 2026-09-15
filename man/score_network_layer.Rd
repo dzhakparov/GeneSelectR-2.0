@@ -5,16 +5,16 @@
 \title{Score Genes by Network Proximity to Disease Seeds}
 \usage{
 score_network_layer(
-    genes,
-    disease_term,
-    string_score_threshold = 400,
-    restart_prob = 0.5,
-    max_seeds = 100,
-    min_score = 0.1,
-    organism = 9606,
-    string_version = "12.0",
-    use_cache = TRUE,
-    verbose = TRUE
+  genes,
+  disease_term,
+  string_score_threshold = 400,
+  restart_prob = 0.5,
+  max_seeds = 100,
+  min_score = 0.1,
+  organism = 9606,
+  string_version = "12.0",
+  use_cache = TRUE,
+  verbose = TRUE
 )
 }
 \arguments{

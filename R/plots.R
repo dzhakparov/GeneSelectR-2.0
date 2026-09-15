@@ -1,9 +1,9 @@
-#' Plot gene-level GeneSelectR measurements
+#' Plot gene-level GeneSelectR 2.0 measurements
 #'
 #' Display the recurrence, permutation-adjusted predictive contribution and
-#' final ranking score for the leading genes in a fitted GeneSelectR result.
+#' final ranking score for the leading genes in a fitted GeneSelectR 2.0 result.
 #'
-#' @param x A GeneSelectR result.
+#' @param x A GeneSelectR 2.0 result.
 #' @param n Number of leading genes to display.
 #' @param colours Three colours used for recurrence, contribution and final
 #'   score.
@@ -123,7 +123,7 @@ plot_gene_ranking <- function(x, n = 15L,
 #' @param x Gene-level data containing selection counts, recurrence,
 #'   contribution and disease association.
 #' @param comparison_label Label for the optional comparison-count series.
-#' @param colours Colours for GeneSelectR, the comparison series, recurrence,
+#' @param colours Colours for GeneSelectR 2.0, the comparison series, recurrence,
 #'   contribution and association.
 #'
 #' @return The displayed data, invisibly.
@@ -202,7 +202,7 @@ plot_gene_evidence <- function(
         hadj = 1, cex.axis = 0.82
     )
     graphics::legend("bottomright",
-        legend = c("GeneSelectR", comparison_label),
+        legend = c("GeneSelectR 2.0", comparison_label),
         pch = c(19, 1), col = colours[seq_len(2L)],
         bty = "n", cex = 0.72
     )
@@ -272,10 +272,10 @@ plot_gene_evidence <- function(
 #' @return The displayed method-specific data, invisibly.
 #' @examples
 #' data(benchmark_biology)
-#' plot_biology_comparison(benchmark_biology, method = "GeneSelectR")
+#' plot_biology_comparison(benchmark_biology, method = "GeneSelectR 2.0")
 #' @export
 plot_biology_comparison <- function(
-    x, method = "GeneSelectR", measures = NULL,
+    x, method = "GeneSelectR 2.0", measures = NULL,
     dataset_order = NULL, colour_limit = NULL
 ) {
     if (is.null(measures)) {

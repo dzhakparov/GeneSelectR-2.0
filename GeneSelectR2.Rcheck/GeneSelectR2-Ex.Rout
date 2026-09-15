@@ -1,0 +1,1005 @@
+
+R version 4.6.1 (2026-06-24) -- "Happy Hop"
+Copyright (C) 2026 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin23
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> pkgname <- "GeneSelectR2"
+> source(file.path(R.home("share"), "R", "examples-header.R"))
+> options(warn = 1)
+> library('GeneSelectR2')
+> 
+> base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
+> base::assign(".old_wd", base::getwd(), pos = 'CheckExEnv')
+> cleanEx()
+> nameEx("asthma_example")
+> ### * asthma_example
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: asthma_example
+> ### Title: Compact U-BIOPRED asthma expression example
+> ### Aliases: asthma_example
+> ### Keywords: datasets
+> 
+> ### ** Examples
+> 
+> data(asthma_example)
+> dim(asthma_example)
+Loading required namespace: SummarizedExperiment
+[1] 300  96
+> table(SummarizedExperiment::colData(asthma_example)$severity)
+
+moderate   severe 
+      48       48 
+> 
+> 
+> 
+> cleanEx()
+> nameEx("biological_scorer")
+> ### * biological_scorer
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: biological_scorer
+> ### Title: Compute Biological Relevance Scores
+> ### Aliases: biological_scorer
+> 
+> ### ** Examples
+> 
+> if (interactive() && requireNamespace("org.Hs.eg.db", quietly = TRUE)) {
++     biological_scorer(
++         c("TP53", "BRCA1"),
++         mode = "supervised",
++         target_terms = "GO:0006915"
++     )
++ }
+> 
+> 
+> 
+> 
+> cleanEx()
+> nameEx("cache_info")
+> ### * cache_info
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: cache_info
+> ### Title: Inspect cached annotation data
+> ### Aliases: cache_info
+> 
+> ### ** Examples
+> 
+> cache_info()
+$directory
+[1] "/Users/dzhakparov/Library/Caches/org.R-project.R/R/GeneSelectR"
+
+$files
+                                                       file size_bytes
+1                                       go_ancestor_map.rds     841522
+2                       go_ancestor_map_v2_human_3.22.0.rds     841522
+3                                              go_human.rds     854840
+4                                    go_v2_human_3.22.0.rds     854853
+5                                             ic_scores.rds      50476
+6            ic_scores_1262758a9ae85fe24681fbd26d619de3.rds        151
+7            ic_scores_234142cf97fc24494c3956127f3da870.rds      50476
+8            ic_scores_97bbec1c291b811924d6eba67c66a33d.rds        156
+9                          ot_seeds_HP0100806_n100_s0.1.rds       1633
+10                      ot_seeds_MONDO0004979_n100_s0.1.rds       2092
+11                      ot_seeds_MONDO0004980_n100_s0.1.rds       2105
+12                      ot_seeds_MONDO0004986_n100_s0.1.rds       2011
+13                      ot_seeds_MONDO0004989_n100_s0.1.rds       2088
+14                      ot_seeds_MONDO0005083_n100_s0.1.rds       2108
+15                      ot_seeds_MONDO0005105_n100_s0.1.rds       2073
+16                      ot_seeds_MONDO0005265_n100_s0.1.rds       2121
+17                      ot_seeds_MONDO0018076_n100_s0.1.rds       1624
+18     term_sim_square_0327f796d33612aacbba87ef798c41a5.rds    3005618
+19     term_sim_square_05b484b14cce1721df1e120aced5bc4e.rds   13076235
+20     term_sim_square_0696f95eaf638e333d59650a7aa3409b.rds    2976787
+21     term_sim_square_069dfa3c04302a42b8eb0b06b1f98b3c.rds    3020075
+22     term_sim_square_10883e9d3cca67939d369491773559f6.rds   15211781
+23     term_sim_square_11cda1dd96ceefd7abfcb94a05f8b581.rds    2906885
+24     term_sim_square_155039e3383b16b069d2afd4c1a53d82.rds    3014610
+25     term_sim_square_1765a0f608615bae39f584ab97fda041.rds   10854239
+26     term_sim_square_1781887dfdd18370c31b695e041a192d.rds    7211139
+27     term_sim_square_179e504c10ab3859ac6729bae23cd25a.rds    7477401
+28     term_sim_square_1a8995c7ad02d4d523068b16258a0674.rds    7382187
+29     term_sim_square_1dd2ef8bea180df9db8c4e3c296273f4.rds    7301774
+30     term_sim_square_2043a7ae413c81864569ac3312af6800.rds    7324462
+31     term_sim_square_228f0cc379fbed1fbae36d54119eae15.rds    2919649
+32     term_sim_square_285d37ef93918a7a0698be6b7664c813.rds    2975485
+33     term_sim_square_287beda3c6c8ae631209c75cc1ee58da.rds    2885964
+34     term_sim_square_2aac284bd6ad79bdf4386981c1dd6dbc.rds    2904341
+35     term_sim_square_2c7d0e54d03f5ff2bed5fd0df76159fe.rds    2939358
+36     term_sim_square_2c857b93425df8c0db94d4a748d5192b.rds    7291564
+37     term_sim_square_2fdf0c3b93d749d391669600029aeebf.rds    3011718
+38     term_sim_square_3405bd55ef1ae46fa9c4386948fcad5e.rds    2855055
+39     term_sim_square_3e1c436c58cb1393d8d988bac01f7ae4.rds    2879594
+40     term_sim_square_3f94059d1af912d94f04cbc302f948b2.rds    2985725
+41     term_sim_square_4126c32c498d67e256a51fb390ce19c3.rds   14518969
+42     term_sim_square_443aa901eb873dead7a78f34845605d9.rds    2809416
+43     term_sim_square_46e7bfefd363cb3e1b1145790c29c673.rds    7338106
+44     term_sim_square_47c5b73633db6eb90a309aa7d027ab1c.rds    2777203
+45     term_sim_square_4892eeb318d3d05a53019eda9cc8364d.rds    2928499
+46     term_sim_square_4aa1b3541eda75a11fcf1f54c81fc707.rds    2944579
+47     term_sim_square_4cf4d641d91813bea5bff58dd26cc66d.rds    2823825
+48     term_sim_square_4cfeca71a2ff85c82c450c29636e5448.rds    7281891
+49     term_sim_square_4e6b87f54e79ce95bec9ac8447bad8c4.rds    2763499
+50     term_sim_square_508c3112020d284ac2a52f99ebbd27c0.rds    2926763
+51     term_sim_square_564b44205fba9c3f5d0f4730b84c3f7d.rds    7366249
+52     term_sim_square_58444bf7dc2015fc028cfe771ab80559.rds    2878674
+53     term_sim_square_5ae9a838d907f6806c1a0951700e69d9.rds    2834750
+54     term_sim_square_5fa6fd98e3d3dbc15a4fd9e1d31c5f3d.rds    7388611
+55     term_sim_square_5fd3c3b4e8976122b50f4968535f24b7.rds    2753446
+56     term_sim_square_611bac4b84e7d3c2a8883cff1c0e50c3.rds    2806341
+57     term_sim_square_62e170d0c92627961b749af397fb2943.rds    7304611
+58     term_sim_square_6309072aaf2c1bb1e3acc9e94a9880bc.rds    7264795
+59     term_sim_square_63a49d5e6eb4d48ed08c7f2ba6327230.rds    3061607
+60     term_sim_square_663cab76e499746fc6c0022ec078468e.rds    2901908
+61     term_sim_square_69c3b4854a93d23785dcdb314d1af923.rds    7350438
+62     term_sim_square_69c8cbfadf9084375a5d1c7fc09ff803.rds    7288418
+63     term_sim_square_6ea735d31a168c350673531355bd78a8.rds    7362229
+64     term_sim_square_710e06a184db995c8a6d0f9ba6c69d42.rds    7398258
+65     term_sim_square_718c5aa55ed4d7c03f4dcf9f9ed3255a.rds    2994336
+66     term_sim_square_744366c4704eb61026c496be88e344f9.rds    7348280
+67     term_sim_square_74ce4e124877c1462c05feb0ebec1ff7.rds    7373390
+68     term_sim_square_74f8f1258cadd11f18bff83fae68bd8f.rds    3011526
+69     term_sim_square_7501a14d091ef0379695a0909e0457cd.rds    7351608
+70     term_sim_square_7865270ef9b2120a00a64eeb515f3ce1.rds    2890488
+71     term_sim_square_79c1bafe5b57e20e3908ebd7438d6b70.rds    7359978
+72     term_sim_square_801b703e0e0267d401465423fcb8bf64.rds    5572543
+73     term_sim_square_83f0cd1b59450d540b64b09386a27477.rds    6114503
+74     term_sim_square_849ba0fa2aea1aca5b1a6b6253f48c49.rds   15389887
+75     term_sim_square_87d86df20c8de4e426887ade5671165a.rds    7401963
+76     term_sim_square_8800d9d5de8b22a49bf7b349ee49c552.rds    7185018
+77     term_sim_square_8ab74daaa57b7bfb55776c8424bd916d.rds    2897251
+78     term_sim_square_8d8e83a3a1e6bff7e28686e0b15a58c9.rds    7348057
+79     term_sim_square_8e7ca8d4ef3e736fd19ddddfae2bafc7.rds    7479593
+80     term_sim_square_93be3ebde0983960b930b5eda175210c.rds    9224271
+81     term_sim_square_93f4aef97c158c01467f08144c3bafdc.rds    2803894
+82     term_sim_square_975a0ba01270c0fe1e8902687b5ea36d.rds    7295200
+83     term_sim_square_9843e8d27175cafead51a9c7f9d71470.rds    7409843
+84     term_sim_square_9f99171c4e9f91b47e012cc134e273bd.rds    2834449
+85     term_sim_square_a2bc160a56e3dcc945fbdeebb37cf777.rds    7286775
+86     term_sim_square_a45fd94cde34097de5237e63a39c9c75.rds    2956203
+87     term_sim_square_a531bbe836e3c47e309433dc2e65abed.rds    7343943
+88     term_sim_square_a5ad198d0535bcc77863b8db2b1adc19.rds    7292585
+89     term_sim_square_a93d0ff78e9b50b62744e05e95e25579.rds    7403359
+90     term_sim_square_aa1d2bbca54f10026349805872a45183.rds    7324543
+91     term_sim_square_abb3067ea8d080e1ed0701e2d9d18b71.rds    7353881
+92     term_sim_square_aebed3a71c248431851a5b3a80893656.rds    7481522
+93     term_sim_square_af9800fdeebe7432ecae6bae15b3b560.rds    2940065
+94     term_sim_square_b0b5bb49dc90dbaaffc18b3f7df613f2.rds    7426898
+95     term_sim_square_b6f08d33fe87393fde6085b3c1200d5c.rds    7378613
+96     term_sim_square_bac6f8b8b4eb3557fb5f09a011740041.rds    7321047
+97     term_sim_square_bbfc16dc7d226553baf1209b9639ec2b.rds    7366285
+98     term_sim_square_c6d9a578bd6a1f0c255c3d6384ea0e1a.rds    3017752
+99     term_sim_square_c83f15aa54dfbbc30b2ee25c565ebd3b.rds    2911701
+100    term_sim_square_ce4f051344c3403882661cf6711b8a74.rds   13821365
+101    term_sim_square_ce839712a86ee66dbf94f051d1cb3f25.rds    2938142
+102    term_sim_square_d158b391d0a4be876f5cc040dd033f59.rds    7380326
+103    term_sim_square_d369511fdfe972606f1c5a3a3049ad42.rds   14543509
+104    term_sim_square_dc28206dd82a454c0e959e33ca73722e.rds    7413745
+105    term_sim_square_dc6d4c79d12cbb239d71b689f019c56d.rds    3042244
+106    term_sim_square_e06349b807f91f06dfd40442672607ab.rds    2839329
+107    term_sim_square_ebee8cd91f2f37d33f34fe6b99daaade.rds    7401313
+108    term_sim_square_ef9127307cac7cb819f166b87aec07e4.rds    2905674
+109    term_sim_square_f04681672e9354b02f3d14c8b7a44730.rds    7261669
+110    term_sim_square_f35ac01ae385c3b0079cd1d05ac7099d.rds    7495184
+111    term_sim_square_f48508776fbfd216226d90a9a5698571.rds   12392634
+112    term_sim_square_f4b95eec544a83a599c2a81e3fd46be7.rds   12254304
+113    term_sim_square_f5125bea6887327568a37bcc5994f6a7.rds    7439274
+114    term_sim_square_f539257ca54c6257dae6228c312b82b7.rds    7376767
+115    term_sim_square_f5c94e47367de81a584b78d113f013eb.rds    7449425
+116    term_sim_square_f7d8d425b68c8c506f257ab6d2d5af63.rds    7258643
+117    term_sim_square_fd96cb3f873ce5ff2d0b748cbc0d083a.rds    7354075
+118 term_sim_target_v1_05cd24d6a1b538d78ed5bece0bedaa38.rds      27008
+119 term_sim_target_v1_07765f0bc2e4f87aa8ce566cc2ac6980.rds      27791
+120 term_sim_target_v1_09b135e330d83061168f0acf24bdc5da.rds      26951
+121 term_sim_target_v1_0bdc176d7c53f78b316d3719b48f76fb.rds      27950
+122 term_sim_target_v1_0d88d9a04c4fd34590bd631ef44ca4fd.rds      27080
+123 term_sim_target_v1_0e52c8fd1f3cfeff24132eb7f2b6e2b1.rds      28048
+124 term_sim_target_v1_108037b6194fd8dffa1cfdbfdb5f1402.rds      27083
+125 term_sim_target_v1_13e5ff20f75bcdd2d71fc6f8150af3a9.rds      28019
+126 term_sim_target_v1_156e6157020c05b572834a06b5109dd0.rds      26613
+127 term_sim_target_v1_1b58560fc2ee3118231ca3dbd68b345f.rds      28230
+128 term_sim_target_v1_1bbf3c240ec87e7c4cb2eaeadca45f6d.rds      27351
+129 term_sim_target_v1_1c168ebc91683d8223e03afc250108f8.rds      26939
+130 term_sim_target_v1_1f3d37745ce28c7729a4aace3fac8ee8.rds      27830
+131 term_sim_target_v1_24b06483d7233c201eeed28cfbcc8f29.rds      26789
+132 term_sim_target_v1_269c2a22bf9af07420beab9ce19163dc.rds      26927
+133 term_sim_target_v1_27dc8731eccf160bd53e2c4eea20128a.rds      26839
+134 term_sim_target_v1_285663cbe4e4f0549cd650c7ec2c6190.rds      28219
+135 term_sim_target_v1_29a42d077d7f9d0ae4e7968d4c8e414f.rds      27630
+136 term_sim_target_v1_2b0ad1bb114ae690bae06dffeec74fc6.rds      27358
+137 term_sim_target_v1_2d4d136b9a72c975d4ef368be0e13733.rds      28805
+138 term_sim_target_v1_2dd0553fdfadcbf9cdaf2ae5d62b54a2.rds      28057
+139 term_sim_target_v1_3a7d7b2321936080e6052b65a5c13dc7.rds      26983
+140 term_sim_target_v1_402d833e6887a121716a1dae3c1e1011.rds      28236
+141 term_sim_target_v1_40a6eabfe540293b9cfe5e2570f207af.rds      26967
+142 term_sim_target_v1_4937bef4ac1228a554803d71522092a7.rds      26659
+143 term_sim_target_v1_4aca084b3f5bcd9d5a153eb77ab4e628.rds      28053
+144 term_sim_target_v1_51ef3487f73e980e3fe992b645764518.rds      26841
+145 term_sim_target_v1_5246210da96e59a300e3ef4520e2c96d.rds      26842
+146 term_sim_target_v1_57859b81bfbf9ed6d9053943ba2e11ee.rds      26725
+147 term_sim_target_v1_5897919feb4a82adc4b8988722ee00b3.rds      27091
+148 term_sim_target_v1_5d6f67e9fa6fc5d20bb1d7fbd49381e7.rds      26729
+149 term_sim_target_v1_5ddaa5af47e54cdf4cc37aaed529c25a.rds      28155
+150 term_sim_target_v1_6457e74eedfbf00a162e2805eb447572.rds      26783
+151 term_sim_target_v1_659f9321a5cb645336bb991ed50ebcf9.rds      28357
+152 term_sim_target_v1_665b8d626bc6009654698e805f3158c4.rds      27011
+153 term_sim_target_v1_69a6a347e005185e34f6acce47b6aedd.rds      26536
+154 term_sim_target_v1_6ac1b386f93b301f9fc81b289a05e6d4.rds      26983
+155 term_sim_target_v1_6b71d3a446819938d4d5a5a1bd5c9317.rds      28169
+156 term_sim_target_v1_71bc0d4246def5e7157b150a14f894da.rds      26738
+157 term_sim_target_v1_724bd7397b023bd13d83f241fa575c49.rds      28104
+158 term_sim_target_v1_72b1e14c40e642c4fed149aa7d7947f6.rds      27031
+159 term_sim_target_v1_75e71230cb6bc04c81d09a1c376a9538.rds      28351
+160 term_sim_target_v1_78a0c823d578168523075648c555ccaf.rds      26996
+161 term_sim_target_v1_78af681835e3b2c75a7188bf7c774967.rds      26942
+162 term_sim_target_v1_7965db6b14c296ec1157a81aca4d765b.rds      28069
+163 term_sim_target_v1_7c1104a8ca52117e2391d259c562b2fa.rds      28200
+164 term_sim_target_v1_7c3b10dbf919df403decf0068fcb7b66.rds      26767
+165 term_sim_target_v1_7e6f80c78bc86028bba7d5a63038486c.rds      28013
+166 term_sim_target_v1_7ee0730c062deed18e91c430a9747cfa.rds      27113
+167 term_sim_target_v1_80d3f8bfc2ae0cb04ece2ce843dc05af.rds      26735
+168 term_sim_target_v1_82e82d18433089807dd66f7c80579ac9.rds      27930
+169 term_sim_target_v1_82feebd3b339f94b7adfe74a4a4cf0c8.rds      26342
+170 term_sim_target_v1_83930ee32a99754b586ae23de09de551.rds      26736
+171 term_sim_target_v1_83ae846114aa9a6733599caceac37710.rds      26640
+172 term_sim_target_v1_85203da9f6d2d28dca1bcb7d49414edd.rds      26519
+173 term_sim_target_v1_86c18c02e2c810adbe3333975055eeec.rds      27664
+174 term_sim_target_v1_88d79725f5efa919d3639dc4f90728ff.rds      26756
+175 term_sim_target_v1_89e6e6d37d5d1c70abe36251ad4b1371.rds      28346
+176 term_sim_target_v1_8ea794293a14d9c9d53788696efb46f9.rds      26590
+177 term_sim_target_v1_913718bb0aab8aa8229bd235b9b435bd.rds      26962
+178 term_sim_target_v1_92071a1e444a655641bae5b5d1db7ff6.rds      27796
+179 term_sim_target_v1_9928723b9c39cdf05b8b018b1fd8425d.rds      26932
+180 term_sim_target_v1_9b1c5aa26fd41f04c7708c465dd819b5.rds      26931
+181 term_sim_target_v1_9b4fa29a8112995ca6efe7e40dc3c680.rds      26876
+182 term_sim_target_v1_9f942d0db5d456deeeee64feb2b1e242.rds      27079
+183 term_sim_target_v1_9ffc52fe72fea58ac515e809c17245d5.rds      28316
+184 term_sim_target_v1_a351eac1746e88424f48aa23abca2f43.rds      28193
+185 term_sim_target_v1_a66656604ed74e89f4a35822f60577d3.rds      28209
+186 term_sim_target_v1_a8f5118e2acce1982ceaeb75c4bffc76.rds      27247
+187 term_sim_target_v1_ae8c2c29fe75b338e4c4b10ab6debddd.rds      27061
+188 term_sim_target_v1_b0a170578a29cc249c797b8a416eb5ef.rds      28167
+189 term_sim_target_v1_b1033d848f2d4843e3126ad9a74aa312.rds      26746
+190 term_sim_target_v1_b2075dc94ce82f968b0a91cc6ceefce3.rds      26623
+191 term_sim_target_v1_b752d01798dee012eeb59c8912806ea9.rds      28145
+192 term_sim_target_v1_b8d3c4ced951ea21ef988743043cb08c.rds      28212
+193 term_sim_target_v1_bb587a44f82df01f2e43715b1b2505f3.rds      26980
+194 term_sim_target_v1_bfac065d4334adfc40045ba637215bca.rds      27273
+195 term_sim_target_v1_bfdc3093b428739cb624cd2741e1c949.rds      26924
+196 term_sim_target_v1_c0fe7d5f64ac71a13f5e6ccb43705919.rds      26957
+197 term_sim_target_v1_c33af85ee6b92db368ccd0f95f57400f.rds      28161
+198 term_sim_target_v1_c477aedee549acb586525255a608f138.rds      26773
+199 term_sim_target_v1_c47854b502e1b2ead2df28941190a210.rds      26474
+200 term_sim_target_v1_c7817cd9ba5784305e87556f41ea6eda.rds      27117
+201 term_sim_target_v1_c816765be5ccef10ca0ae8a4b8bff0e3.rds      27872
+202 term_sim_target_v1_ca9d4eae91f53fad9ea17e724fae5304.rds      27036
+203 term_sim_target_v1_cad8b84ff6455ed78fb3cd265a9c9403.rds      26685
+204 term_sim_target_v1_cc3ff26f3114b2f2200bf4dc893d440f.rds      28061
+205 term_sim_target_v1_d2a52cec87d8682bb52074001faa5ab3.rds      26860
+206 term_sim_target_v1_d4fd4fff2d35eaa6fe9207c714228338.rds      28374
+207 term_sim_target_v1_d8e9c18fe1adeb746eaae2c38b038f40.rds      27589
+208 term_sim_target_v1_d9e59f3bd220862ad551fe728e8d52d4.rds      28045
+209 term_sim_target_v1_dddda84290ff8b9c3e37f04f0ac54a5c.rds      26772
+210 term_sim_target_v1_def27a8f20c5154a2b71ad7ab8dc0a97.rds      26866
+211 term_sim_target_v1_e0d49c9c200bc6b584408aa4a5525cd3.rds      26807
+212 term_sim_target_v1_e1705f809b10e6c3f3604bb5c8b34b81.rds      26557
+213 term_sim_target_v1_e2666863c18520f873dd04bc25299199.rds      26428
+214 term_sim_target_v1_e4a688e869d61a1bb808194d2ec5fbd4.rds      26995
+215 term_sim_target_v1_e806fa571649315bec9ef9610c07b559.rds      28301
+216 term_sim_target_v1_f1a1602d92bb46f9bfddcd521afea6d4.rds      26551
+217 term_sim_target_v1_f508aa6f3673000607be0b3a32cec0f6.rds      26838
+218 term_sim_target_v1_f5f99a049216bab7c5e892e75ce787ac.rds      26979
+219 term_sim_target_v1_f87177df48ec865a29fe45c4047772a5.rds      28093
+220 term_sim_target_v1_f87f5ad5b8c2e5bd1c578b8516bf17ce.rds      26890
+221 term_sim_target_v1_f9994d143e68bb001931092a23835e61.rds      26568
+222 term_sim_target_v1_f9cfc49dcffcd28bb3f604409aca83d8.rds      28190
+223 term_sim_target_v1_fa75f3cfe504e88fa817bcdad0767e0b.rds      26601
+224 term_sim_target_v1_fd8354233ec45520b0e79cbbef9d73d1.rds      28367
+225 term_sim_target_v1_fe151b4669b669a06b75d39de77ff716.rds      26901
+               modified
+1   2026-03-12 19:23:12
+2   2026-08-18 15:23:33
+3   2026-03-12 19:27:05
+4   2026-08-18 15:23:17
+5   2026-07-01 14:58:39
+6   2026-08-15 17:51:01
+7   2026-08-18 15:24:32
+8   2026-08-15 17:51:01
+9   2026-08-11 19:36:56
+10  2026-08-04 21:58:08
+11  2026-07-01 14:02:37
+12  2026-07-16 03:49:40
+13  2026-08-12 15:14:23
+14  2026-08-11 05:44:29
+15  2026-08-14 04:10:01
+16  2026-08-13 22:58:02
+17  2026-08-11 16:51:33
+18  2026-08-20 09:55:15
+19  2026-07-10 03:16:27
+20  2026-08-20 10:41:26
+21  2026-08-20 06:48:02
+22  2026-08-12 23:21:18
+23  2026-08-20 08:10:46
+24  2026-08-20 09:54:31
+25  2026-08-11 19:08:08
+26  2026-08-19 14:36:35
+27  2026-08-19 16:52:11
+28  2026-08-20 02:19:13
+29  2026-08-19 20:33:12
+30  2026-08-20 00:21:49
+31  2026-08-20 06:01:06
+32  2026-08-20 09:02:51
+33  2026-08-20 07:23:41
+34  2026-08-20 09:51:40
+35  2026-08-20 09:51:53
+36  2026-08-20 14:51:01
+37  2026-08-20 09:01:18
+38  2026-08-20 09:00:50
+39  2026-08-20 09:50:57
+40  2026-08-20 06:02:43
+41  2026-08-11 10:35:43
+42  2026-08-20 08:09:22
+43  2026-08-20 14:51:20
+44  2026-08-20 09:46:06
+45  2026-08-20 07:24:46
+46  2026-08-20 08:12:45
+47  2026-08-20 10:35:49
+48  2026-08-20 00:21:20
+49  2026-08-20 09:00:22
+50  2026-08-20 11:10:44
+51  2026-08-20 00:25:57
+52  2026-08-20 06:47:43
+53  2026-08-20 06:48:17
+54  2026-08-19 16:59:51
+55  2026-08-20 06:44:41
+56  2026-08-20 10:37:27
+57  2026-08-19 14:42:50
+58  2026-08-19 14:41:21
+59  2026-08-20 07:25:56
+60  2026-08-20 08:11:37
+61  2026-08-20 02:27:16
+62  2026-08-20 14:52:39
+63  2026-08-19 16:53:38
+64  2026-08-19 18:36:04
+65  2026-08-20 08:58:51
+66  2026-08-19 20:35:39
+67  2026-08-19 14:40:22
+68  2026-08-20 06:02:05
+69  2026-08-20 00:27:59
+70  2026-08-20 06:01:21
+71  2026-08-20 02:18:55
+72  2026-08-05 00:10:16
+73  2026-08-03 20:03:36
+74  2026-08-13 19:55:08
+75  2026-08-19 22:35:16
+76  2026-08-20 00:30:29
+77  2026-08-20 11:46:42
+78  2026-08-19 22:30:05
+79  2026-08-19 17:02:41
+80  2026-08-14 03:43:33
+81  2026-08-20 05:59:25
+82  2026-08-19 22:31:59
+83  2026-08-19 22:28:14
+84  2026-08-20 10:40:34
+85  2026-08-19 14:42:33
+86  2026-08-20 08:12:06
+87  2026-08-20 03:42:32
+88  2026-08-19 22:28:35
+89  2026-08-20 05:17:23
+90  2026-08-19 22:28:06
+91  2026-08-20 02:17:38
+92  2026-08-20 02:23:42
+93  2026-08-20 06:47:07
+94  2026-08-19 14:38:16
+95  2026-08-19 20:34:29
+96  2026-08-19 16:49:39
+97  2026-08-20 02:25:09
+98  2026-08-20 06:49:42
+99  2026-08-20 06:00:42
+100 2026-08-12 03:55:54
+101 2026-08-20 10:33:38
+102 2026-08-19 20:34:32
+103 2026-08-14 11:29:56
+104 2026-08-19 20:35:06
+105 2026-08-20 09:02:50
+106 2026-08-20 10:37:51
+107 2026-08-20 14:55:01
+108 2026-08-20 08:11:45
+109 2026-08-20 14:48:11
+110 2026-08-20 14:51:58
+111 2026-08-11 05:05:03
+112 2026-07-16 06:20:06
+113 2026-08-19 20:37:15
+114 2026-08-19 18:36:05
+115 2026-08-19 17:01:46
+116 2026-08-20 00:22:02
+117 2026-08-19 18:23:12
+118 2026-08-19 00:59:36
+119 2026-08-18 17:00:30
+120 2026-08-19 01:17:19
+121 2026-08-18 17:05:44
+122 2026-08-18 20:08:16
+123 2026-08-18 17:36:30
+124 2026-08-18 20:45:39
+125 2026-08-18 17:16:06
+126 2026-08-19 00:42:16
+127 2026-08-18 18:19:27
+128 2026-08-18 17:46:06
+129 2026-08-18 22:35:46
+130 2026-08-18 18:14:32
+131 2026-08-18 23:03:13
+132 2026-08-18 21:41:18
+133 2026-08-18 19:49:19
+134 2026-08-18 17:00:31
+135 2026-08-18 18:14:38
+136 2026-08-18 17:31:39
+137 2026-08-18 15:53:34
+138 2026-08-18 16:55:17
+139 2026-08-19 00:33:37
+140 2026-08-18 17:46:03
+141 2026-08-18 20:26:52
+142 2026-08-18 23:39:33
+143 2026-08-18 17:31:44
+144 2026-08-18 22:54:03
+145 2026-08-18 21:32:15
+146 2026-08-18 20:36:21
+147 2026-08-19 03:54:39
+148 2026-08-19 01:08:23
+149 2026-08-18 18:36:55
+150 2026-08-19 01:52:10
+151 2026-08-18 18:00:24
+152 2026-08-18 22:44:54
+153 2026-08-19 03:45:58
+154 2026-08-18 19:30:38
+155 2026-08-18 17:05:39
+156 2026-08-18 22:08:28
+157 2026-08-18 16:50:03
+158 2026-08-18 18:49:24
+159 2026-08-18 17:41:21
+160 2026-08-19 00:06:44
+161 2026-08-19 03:20:01
+162 2026-08-18 18:28:50
+163 2026-08-18 16:50:04
+164 2026-08-19 04:29:37
+165 2026-08-18 17:21:24
+166 2026-08-18 20:17:33
+167 2026-08-19 00:15:46
+168 2026-08-18 17:21:13
+169 2026-08-18 19:58:54
+170 2026-08-19 01:43:21
+171 2026-08-18 23:21:23
+172 2026-08-19 03:11:18
+173 2026-08-18 18:23:59
+174 2026-08-18 23:57:43
+175 2026-08-18 17:55:31
+176 2026-08-18 21:13:52
+177 2026-08-18 22:26:42
+178 2026-08-18 18:09:50
+179 2026-08-19 04:38:31
+180 2026-08-19 02:10:03
+181 2026-08-18 21:50:18
+182 2026-08-18 23:48:38
+183 2026-08-18 17:26:33
+184 2026-08-18 17:55:40
+185 2026-08-18 17:50:48
+186 2026-08-19 02:36:25
+187 2026-08-19 02:18:52
+188 2026-08-18 18:05:09
+189 2026-08-19 04:20:53
+190 2026-08-19 03:28:41
+191 2026-08-18 18:19:19
+192 2026-08-18 18:09:54
+193 2026-08-19 02:53:52
+194 2026-08-19 01:26:05
+195 2026-08-18 23:30:29
+196 2026-08-19 04:47:48
+197 2026-08-18 17:41:15
+198 2026-08-18 22:17:37
+199 2026-08-18 19:21:19
+200 2026-08-18 23:12:19
+201 2026-08-18 17:50:50
+202 2026-08-18 21:23:09
+203 2026-08-19 03:02:34
+204 2026-08-18 17:36:26
+205 2026-08-19 02:00:59
+206 2026-08-18 17:16:05
+207 2026-08-18 17:10:52
+208 2026-08-18 17:10:52
+209 2026-08-19 04:03:23
+210 2026-08-18 20:55:09
+211 2026-08-19 02:45:07
+212 2026-08-18 21:04:32
+213 2026-08-19 04:12:11
+214 2026-08-19 03:37:19
+215 2026-08-18 16:55:17
+216 2026-08-18 21:59:22
+217 2026-08-19 01:34:40
+218 2026-08-19 00:50:56
+219 2026-08-18 18:24:12
+220 2026-08-18 19:12:03
+221 2026-08-19 02:27:34
+222 2026-08-18 18:00:16
+223 2026-08-19 00:24:48
+224 2026-08-18 18:05:03
+225 2026-08-18 19:39:54
+
+$total_size_bytes
+[1] 614606053
+
+$memory_keys
+character(0)
+
+> 
+> 
+> 
+> cleanEx()
+> nameEx("clear_cache")
+> ### * clear_cache
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: clear_cache
+> ### Title: Clear All Cached Data
+> ### Aliases: clear_cache
+> 
+> ### ** Examples
+> 
+> if (interactive()) {
++     clear_cache(confirm = FALSE)
++ }
+> 
+> 
+> 
+> cleanEx()
+> nameEx("compute_mutual_information")
+> ### * compute_mutual_information
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: compute_mutual_information
+> ### Title: Compute mutual information with a binary outcome
+> ### Aliases: compute_mutual_information
+> 
+> ### ** Examples
+> 
+> x <- c(0, 0, 1, 1, 2, 2)
+> y <- factor(c("a", "a", "a", "b", "b", "b"))
+> compute_mutual_information(x, y)
+        1 
+0.4620981 
+> 
+> 
+> 
+> cleanEx()
+> nameEx("compute_nogueira_stability")
+> ### * compute_nogueira_stability
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: compute_nogueira_stability
+> ### Title: Compute the Nogueira feature-selection stability index
+> ### Aliases: compute_nogueira_stability
+> 
+> ### ** Examples
+> 
+> selections <- matrix(
++     c(TRUE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE, FALSE),
++     nrow = 4
++ )
+> compute_nogueira_stability(selections)
+$nogueira_index
+[1] -1
+
+> 
+> 
+> 
+> cleanEx()
+> nameEx("create_subsamples")
+> ### * create_subsamples
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: create_subsamples
+> ### Title: Create repeated stratified cross-validation splits
+> ### Aliases: create_subsamples
+> 
+> ### ** Examples
+> 
+> y <- factor(
++     rep(c("control", "case"), each = 10),
++     levels = c("control", "case")
++ )
+> create_subsamples(y, B = 5, k_folds = 5)
+[[1]]
+[[1]]$train
+ [1]  1  2  3  4  6  8  9 10 11 12 13 14 16 18 19 20
+
+[[1]]$oob
+[1]  5  7 15 17
+
+[[1]]$subsample_id
+[1] 1
+
+[[1]]$repeat_id
+[1] 1
+
+[[1]]$fold_id
+[1] 1
+
+
+[[2]]
+[[2]]$train
+ [1]  1  2  4  5  6  7  9 10 11 12 13 14 15 16 17 18
+
+[[2]]$oob
+[1]  3  8 19 20
+
+[[2]]$subsample_id
+[1] 2
+
+[[2]]$repeat_id
+[1] 1
+
+[[2]]$fold_id
+[1] 2
+
+
+[[3]]
+[[3]]$train
+ [1]  2  3  5  6  7  8  9 10 11 12 15 16 17 18 19 20
+
+[[3]]$oob
+[1]  1  4 13 14
+
+[[3]]$subsample_id
+[1] 3
+
+[[3]]$repeat_id
+[1] 1
+
+[[3]]$fold_id
+[1] 3
+
+
+[[4]]
+[[4]]$train
+ [1]  1  2  3  4  5  7  8  9 11 12 13 14 15 17 19 20
+
+[[4]]$oob
+[1]  6 10 16 18
+
+[[4]]$subsample_id
+[1] 4
+
+[[4]]$repeat_id
+[1] 1
+
+[[4]]$fold_id
+[1] 4
+
+
+[[5]]
+[[5]]$train
+ [1]  1  3  4  5  6  7  8 10 13 14 15 16 17 18 19 20
+
+[[5]]$oob
+[1]  2  9 11 12
+
+[[5]]$subsample_id
+[1] 5
+
+[[5]]$repeat_id
+[1] 1
+
+[[5]]$fold_id
+[1] 5
+
+
+> 
+> 
+> 
+> cleanEx()
+> nameEx("evaluate_gene_set_coherence")
+> ### * evaluate_gene_set_coherence
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: evaluate_gene_set_coherence
+> ### Title: Evaluate the Semantic Coherence of a Selected Gene Set
+> ### Aliases: evaluate_gene_set_coherence
+> 
+> ### ** Examples
+> 
+> if (interactive() && requireNamespace("org.Hs.eg.db", quietly = TRUE)) {
++     evaluate_gene_set_coherence(c("TP53", "BRCA1"), verbose = FALSE)
++ }
+> 
+> 
+> 
+> cleanEx()
+> nameEx("geneselectr2_fit")
+> ### * geneselectr2_fit
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: geneselectr2_fit
+> ### Title: Fit the GeneSelectR ranking model
+> ### Aliases: geneselectr2_fit
+> 
+> ### ** Examples
+> 
+> set.seed(1)
+> X <- matrix(rnorm(40 * 12), nrow = 40)
+> colnames(X) <- paste0("gene", seq_len(ncol(X)))
+> y <- factor(
++     rep(c("control", "case"), each = 20),
++     levels = c("control", "case")
++ )
+> signal_columns <- seq_len(2L)
+> X[y == "case", signal_columns] <- X[y == "case", signal_columns] + 1
+> fit <- geneselectr2_fit(
++     X, y,
++     B = 2, permutations = 1, null_B = 2, verbose = FALSE
++ )
+Warning: Too few (< 10) observations per fold for type.measure='auc' in cv.lognet; changed to type.measure='deviance'. Alternatively, use smaller value for nfolds
+Warning: Too few (< 10) observations per fold for type.measure='auc' in cv.lognet; changed to type.measure='deviance'. Alternatively, use smaller value for nfolds
+Warning: Too few (< 10) observations per fold for type.measure='auc' in cv.lognet; changed to type.measure='deviance'. Alternatively, use smaller value for nfolds
+Warning: Too few (< 10) observations per fold for type.measure='auc' in cv.lognet; changed to type.measure='deviance'. Alternatively, use smaller value for nfolds
+> head(fit$gene_scores)
+    gene final_score combined_score recurrence shap_frequency
+1  gene2   1.0000000       5.911267        1.0         0.4375
+2  gene1   0.9166667       5.439654        1.0         0.3750
+3  gene5   0.8333333       4.974446        0.5         0.3125
+4  gene6   0.7500000       4.725134        1.0         0.1875
+5  gene7   0.6666667       4.633418        0.5         0.1250
+6 gene12   0.5833333       4.408981        0.5         0.0625
+  mutual_information predictive_contribution adjusted_recurrence
+1         0.22586762              0.31435185                  16
+2         0.13562486              0.22552012                  16
+3         0.06739756              0.14512662                  16
+4         0.05879833              0.10499851                  16
+5         0.06589250              0.09075551                  16
+6         0.05212764              0.05707869                  16
+  adjusted_contribution
+1              2.183942
+2              1.849365
+3              1.546570
+4              1.395430
+5              1.341785
+6              1.214944
+> 
+> 
+> 
+> cleanEx()
+> nameEx("get_disease_seeds_opentargets")
+> ### * get_disease_seeds_opentargets
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: get_disease_seeds_opentargets
+> ### Title: Derive Disease Seed Genes from Open Targets
+> ### Aliases: get_disease_seeds_opentargets
+> 
+> ### ** Examples
+> 
+> if (interactive()) {
++     get_disease_seeds_opentargets(
++         "EFO_0000274",
++         max_seeds = 5, verbose = FALSE
++     )
++ }
+> 
+> 
+> 
+> cleanEx()
+> nameEx("load_go_cache")
+> ### * load_go_cache
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: load_go_cache
+> ### Title: Load GO Annotations with Caching
+> ### Aliases: load_go_cache
+> 
+> ### ** Examples
+> 
+> if (interactive() && requireNamespace("org.Hs.eg.db", quietly = TRUE)) {
++     go_cache <- load_go_cache("human")
++     go_cache[["TP53"]]
++ }
+> 
+> 
+> 
+> 
+> cleanEx()
+> nameEx("multilayer_bio_scorer")
+> ### * multilayer_bio_scorer
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: multilayer_bio_scorer
+> ### Title: Multi-Layer Biological Scorer
+> ### Aliases: multilayer_bio_scorer
+> 
+> ### ** Examples
+> 
+> if (interactive() && requireNamespace("org.Hs.eg.db", quietly = TRUE)) {
++     multilayer_bio_scorer(
++         c("TP53", "BRCA1"),
++         layers = "go",
++         target_terms = "GO:0006915", verbose = FALSE
++     )
++ }
+> 
+> 
+> 
+> 
+> cleanEx()
+> nameEx("plot_biology_comparison")
+> ### * plot_biology_comparison
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: plot_biology_comparison
+> ### Title: Plot biological assessment against matched random gene sets
+> ### Aliases: plot_biology_comparison
+> 
+> ### ** Examples
+> 
+> data(benchmark_biology)
+> plot_biology_comparison(benchmark_biology, method = "GeneSelectR")
+> 
+> 
+> 
+> cleanEx()
+> nameEx("plot_gene_evidence")
+> ### * plot_gene_evidence
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: plot_gene_evidence
+> ### Title: Plot gene-level predictive and biological evidence
+> ### Aliases: plot_gene_evidence
+> 
+> ### ** Examples
+> 
+> data(asthma_case_study)
+> plot_gene_evidence(asthma_case_study, comparison_label = "DGE")
+> 
+> 
+> 
+> cleanEx()
+> nameEx("plot_gene_ranking")
+> ### * plot_gene_ranking
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: plot_gene_ranking
+> ### Title: Plot gene-level GeneSelectR measurements
+> ### Aliases: plot_gene_ranking
+> 
+> ### ** Examples
+> 
+> data(asthma_example)
+> fit <- select_genes(asthma_example, "severity",
++     n_genes = 10,
++     alpha = 0.5, B = 2, permutations = 1, null_B = 2
++ )
+> plot_gene_ranking(fit, n = 8)
+> 
+> 
+> 
+> cleanEx()
+> nameEx("score_network_layer")
+> ### * score_network_layer
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: score_network_layer
+> ### Title: Score Genes by Network Proximity to Disease Seeds
+> ### Aliases: score_network_layer
+> 
+> ### ** Examples
+> 
+> if (interactive()) {
++     score_network_layer(
++         c("IL6", "STAT3"), "EFO_0000274",
++         verbose = FALSE
++     )
++ }
+> 
+> 
+> 
+> cleanEx()
+> nameEx("score_semantic_layer")
+> ### * score_semantic_layer
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: score_semantic_layer
+> ### Title: Score Genes by Semantic Similarity to Disease Biology
+> ### Aliases: score_semantic_layer
+> 
+> ### ** Examples
+> 
+> if (interactive() && requireNamespace("org.Hs.eg.db", quietly = TRUE)) {
++     score_semantic_layer(
++         c("TP53", "BRCA1"), "GO:0006915",
++         verbose = FALSE
++     )
++ }
+> 
+> 
+> 
+> cleanEx()
+> nameEx("select_genes")
+> ### * select_genes
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: select_genes
+> ### Title: Run the predictive GeneSelectR workflow
+> ### Aliases: select_genes
+> 
+> ### ** Examples
+> 
+> data(asthma_example)
+> fit <- select_genes(asthma_example, "severity",
++     n_genes = 10,
++     alpha = 0.5, B = 2, permutations = 1, null_B = 2
++ )
+> head(fit$selected_genes)
+[1] "CPEB1-AS1" "LILRA4"    "ASH1L"     "CSF1"      "TIGD2"     "SETD5"    
+> 
+> 
+> 
+> cleanEx()
+> nameEx("set_cache_options")
+> ### * set_cache_options
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: set_cache_options
+> ### Title: Set Cache Options
+> ### Aliases: set_cache_options
+> 
+> ### ** Examples
+> 
+> set_cache_options(verbose = FALSE)
+> 
+> 
+> 
+> 
+> ### * <FOOTER>
+> ###
+> cleanEx()
+> options(digits = 7L)
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  3.949 0.124 4.084 0 0 
+> grDevices::dev.off()
+null device 
+          1 
+> ###
+> ### Local variables: ***
+> ### mode: outline-minor ***
+> ### outline-regexp: "\\(> \\)?### [*]+" ***
+> ### End: ***
+> quit('no')

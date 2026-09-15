@@ -2,12 +2,12 @@
 % Please edit documentation in R/plots.R
 \name{plot_gene_ranking}
 \alias{plot_gene_ranking}
-\title{Plot gene-level GeneSelectR measurements}
+\title{Plot gene-level GeneSelectR 2.0 measurements}
 \usage{
 plot_gene_ranking(x, n = 15L, colours = c("#087E82", "#7A5BB5", "#D27342"))
 }
 \arguments{
-\item{x}{A GeneSelectR result.}
+\item{x}{A GeneSelectR 2.0 result.}
 
 \item{n}{Number of leading genes to display.}
 
@@ -19,7 +19,7 @@ The displayed rows of \code{x$gene_scores}, invisibly.
 }
 \description{
 Display the recurrence, permutation-adjusted predictive contribution and
-final ranking score for the leading genes in a fitted GeneSelectR result.
+final ranking score for the leading genes in a fitted GeneSelectR 2.0 result.
 }
 \examples{
 data(asthma_example)

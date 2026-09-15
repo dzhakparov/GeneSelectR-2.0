@@ -1,4 +1,4 @@
-# GeneSelectR 0.99.3
+# GeneSelectR 2.0 (version 0.99.3)
 
 - Restricted the package implementation to the workflow evaluated in the
   manuscript: repeated elastic net, excluded-sample contribution,
@@ -9,7 +9,7 @@
 - Simplified the result table and documentation to use explicit gene-level
   measurement names.
 
-# GeneSelectR 0.99.2
+# GeneSelectR 2.0 (version 0.99.2)
 
 - Added package functions for plotting gene-level ranking measurements,
   gene-level predictive and disease evidence, and biological assessment
@@ -18,7 +18,7 @@
 - Extended the asthma vignette with reproducible biological and gene-level
   figures.
 
-# GeneSelectR 0.99.1
+# GeneSelectR 2.0 (version 0.99.1)
 
 - Added a predictive workflow interface with SummarizedExperiment support.
 - Added a documented GSE69683 subset and an evaluated asthma vignette.

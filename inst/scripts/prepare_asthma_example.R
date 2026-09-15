@@ -3,7 +3,7 @@
 config <- list(
     expression = "data/GSE69683/expression_prepared.csv",
     metadata = "data/GSE69683/metadata_prepared.csv",
-    destination = "package/GeneSelectR/data/asthma_example.rda"
+    destination = "package/GeneSelectR2/data/asthma_example.rda"
 )
 expression <- as.matrix(read.csv(config$expression, row.names = 1,
                                 check.names = FALSE))

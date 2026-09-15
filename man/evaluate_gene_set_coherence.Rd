@@ -5,15 +5,15 @@
 \title{Evaluate the Semantic Coherence of a Selected Gene Set}
 \usage{
 evaluate_gene_set_coherence(
-    gene_set,
-    background_genes = NULL,
-    n_permutations = 50,
-    ontology = "BP",
-    sim_method = "resnik",
-    organism = "human",
-    use_cache = TRUE,
-    random_seed = 123,
-    verbose = TRUE
+  gene_set,
+  background_genes = NULL,
+  n_permutations = 50,
+  ontology = "BP",
+  sim_method = "resnik",
+  organism = "human",
+  use_cache = TRUE,
+  random_seed = 123,
+  verbose = TRUE
 )
 }
 \arguments{

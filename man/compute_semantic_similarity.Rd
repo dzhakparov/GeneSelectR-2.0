@@ -5,11 +5,11 @@
 \title{Compute Semantic Similarity Between Two GO Terms}
 \usage{
 compute_semantic_similarity(
-    term1,
-    term2,
-    ic_scores,
-    ancestor_map = NULL,
-    method = "resnik"
+  term1,
+  term2,
+  ic_scores,
+  ancestor_map = NULL,
+  method = "resnik"
 )
 }
 \arguments{

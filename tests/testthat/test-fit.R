@@ -15,7 +15,7 @@ test_that("the core fit returns the implemented ranking measurements", {
         "shap_frequency", "mutual_information", "predictive_contribution",
         "adjusted_recurrence", "adjusted_contribution"
     )
-    expect_s3_class(fit, "geneselectr_result")
+    expect_s3_class(fit, "geneselectr2_result")
     expect_identical(names(fit$gene_scores), expected)
     expect_equal(nrow(fit$gene_scores), ncol(X))
     expect_true(all(diff(fit$gene_scores$final_score) <= 0))

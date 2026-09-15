@@ -16,7 +16,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
 # Introduction
 
-GeneSelectR combines repeated gene inclusion and excluded-sample predictive
+GeneSelectR 2.0 combines repeated gene inclusion and excluded-sample predictive
 contribution into a ranking. Both components are compared with shuffled-outcome
 references. The output retains individual component measurements for inspection.
 The `SummarizedExperiment` input supports use with Bioconductor expression
@@ -33,13 +33,13 @@ before running this vignette. After Bioconductor acceptance, installation will
 use:
 
 ```{r installation, eval=FALSE}
-BiocManager::install("GeneSelectR")
+BiocManager::install("GeneSelectR2")
 ```
 
 # Expression and phenotype
 
 ```{r input}
-library(GeneSelectR)
+library(GeneSelectR2)
 library(SummarizedExperiment)
 data(asthma_example)
 dim(asthma_example)
@@ -112,7 +112,7 @@ properties.
 ```{r biology-heatmap, fig.width=8.5, fig.height=6.3}
 data(benchmark_biology)
 plot_biology_comparison(
-    benchmark_biology, method = "GeneSelectR",
+    benchmark_biology, method = "GeneSelectR 2.0",
     dataset_order = c(
         "Atopic dermatitis", "Bladder cancer", "Asthma", "Sepsis",
         "Psoriasis", "Tuberculosis", "Crohn disease"

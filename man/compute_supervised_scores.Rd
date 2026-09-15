@@ -5,14 +5,14 @@
 \title{Compute Supervised Scores}
 \usage{
 compute_supervised_scores(
-    genes,
-    target_terms,
-    go_cache,
-    ic_scores,
-    similarity_cache,
-    ancestor_map = NULL,
-    sim_method = "resnik",
-    n_top_sims = 5
+  genes,
+  target_terms,
+  go_cache,
+  ic_scores,
+  similarity_cache,
+  ancestor_map = NULL,
+  sim_method = "resnik",
+  n_top_sims = 5
 )
 }
 \arguments{

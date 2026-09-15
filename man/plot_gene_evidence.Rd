@@ -5,9 +5,9 @@
 \title{Plot gene-level predictive and biological evidence}
 \usage{
 plot_gene_evidence(
-    x,
-    comparison_label = "Comparison",
-    colours = c("#087E82", "#9AA1A8", "#087E82", "#7A5BB5", "#D27342")
+  x,
+  comparison_label = "Comparison",
+  colours = c("#087E82", "#9AA1A8", "#087E82", "#7A5BB5", "#D27342")
 )
 }
 \arguments{
@@ -16,7 +16,7 @@ contribution and disease association.}
 
 \item{comparison_label}{Label for the optional comparison-count series.}
 
-\item{colours}{Colours for GeneSelectR, the comparison series, recurrence,
+\item{colours}{Colours for GeneSelectR 2.0, the comparison series, recurrence,
 contribution and association.}
 }
 \value{

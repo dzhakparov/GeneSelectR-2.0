@@ -5,16 +5,16 @@
 \title{Multi-Layer Biological Scorer}
 \usage{
 multilayer_bio_scorer(
-    genes,
-    layers = c("go", "msigdb"),
-    disease_term = NULL,
-    target_terms = NULL,
-    go_mode = "supervised",
-    msigdb_categories = c("C2", "C7", "H"),
-    organism = "Homo sapiens",
-    use_cache = TRUE,
-    verbose = TRUE,
-    ...
+  genes,
+  layers = c("go", "msigdb"),
+  disease_term = NULL,
+  target_terms = NULL,
+  go_mode = "supervised",
+  msigdb_categories = c("C2", "C7", "H"),
+  organism = "Homo sapiens",
+  use_cache = TRUE,
+  verbose = TRUE,
+  ...
 )
 }
 \arguments{

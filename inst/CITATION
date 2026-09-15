@@ -1,6 +1,6 @@
 bibentry(
     bibtype = "Manual",
-    title = "GeneSelectR: Predictive Gene Selection and Biological Interpretation",
+    title = "GeneSelectR 2.0: Predictive Gene Selection and Biological Interpretation",
     author = person("Damir", "Zhakparov"),
     year = "2026",
     note = sprintf("R package version %s", meta$Version),

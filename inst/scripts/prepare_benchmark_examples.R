@@ -2,7 +2,7 @@ CONFIG <- list(
     case_study = "output/biostec_2027/latex/verification/data/asthma_eight_completed_OT.csv",
     biology = "output/biostec_2027/latex/display_options/biology_summary_source.csv",
     open_targets = "output/manuscript/2026-09-07/source_data/dev7_dense_OT_by_dataset.csv",
-    output = "package/GeneSelectR/data"
+    output = "package/GeneSelectR2/data"
 )
 
 case_source <- read.csv(CONFIG$case_study, check.names = FALSE)
@@ -39,7 +39,7 @@ names(benchmark_biology) <- c(
     "open_targets_05_ratio", "open_targets_10_ratio"
 )
 method_names <- c(
-    GS_full_ungrouped = "GeneSelectR", RF_importance = "Random forest",
+    GS_full_ungrouped = "GeneSelectR 2.0", RF_importance = "Random forest",
     ElasticNet = "Elastic net", Boruta = "Boruta", DGE = "DGE",
     LASSO = "LASSO", mRMR = "mRMR"
 )

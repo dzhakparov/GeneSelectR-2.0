@@ -5,11 +5,11 @@
 \title{Score Genes by MSigDB Gene Set Membership}
 \usage{
 score_msigdb_layer(
-    genes,
-    disease_keyword,
-    categories = c("C2", "C7", "H"),
-    organism = "Homo sapiens",
-    verbose = TRUE
+  genes,
+  disease_keyword,
+  categories = c("C2", "C7", "H"),
+  organism = "Homo sapiens",
+  verbose = TRUE
 )
 }
 \arguments{

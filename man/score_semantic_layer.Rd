@@ -5,13 +5,13 @@
 \title{Score Genes by Semantic Similarity to Disease Biology}
 \usage{
 score_semantic_layer(
-    genes,
-    target_terms,
-    ontology = "BP",
-    sim_method = "resnik",
-    organism = "human",
-    use_cache = TRUE,
-    verbose = TRUE
+  genes,
+  target_terms,
+  ontology = "BP",
+  sim_method = "resnik",
+  organism = "human",
+  use_cache = TRUE,
+  verbose = TRUE
 )
 }
 \arguments{
