@@ -1,4 +1,7 @@
 .Rproj.user
+*.Rcheck/
+*.BiocCheck/
+*.tar.gz
 .Rhistory
 .Rdata
 .httr-oauth
@@ -18,3 +21,5 @@ depreciated/
 data/
 .Rapp.history
 /benchmark
+# Shiny application is kept out of the BioC branch
+/apps/

@@ -1,14 +1,12 @@
 Package: GeneSelectR2
 Type: Package
 Title: Predictive Gene Selection and Biological Interpretation
-Version: 0.99.3
+Version: 0.99.4
 Authors@R:
     person(given = "Damir", family = "Zhakparov",
            email = "dzhakparov@gmail.com",
            role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7175-0843"))
-Author: Damir Zhakparov
-Maintainer: Damir Zhakparov <dzhakparov@gmail.com>
 Description: Provides a transcriptomics workflow for predictive gene ranking,
     repeated-selection information and biological interpretation. Elastic-net
     models are fitted across repeated stratified folds. Recurrence and
@@ -20,7 +18,7 @@ License: MIT + file LICENSE
 URL: https://github.com/dzhakparov/GeneSelectR-2.0
 BugReports: https://github.com/dzhakparov/GeneSelectR-2.0/issues
 Depends:
-    R (>= 4.5.0)
+    R (>= 4.6.0)
 Imports:
     methods,
     SummarizedExperiment,

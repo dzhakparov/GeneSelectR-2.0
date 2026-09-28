@@ -22,7 +22,7 @@ biological_scorer(
 )
 }
 \arguments{
-\item{genes}{Character vector of gene symbols (genes to SCORE)}
+\item{genes}{Character vector of gene symbols to score.}
 
 \item{mode}{"supervised" or "data_driven"}
 
@@ -44,9 +44,8 @@ c("BP", "MF", "CC"). Default: "BP".}
 
 \item{ic_quantile}{Specificity filter quantile for IC.}
 
-\item{enrichment_genes}{Character vector of gene symbols used ONLY to
-discover enriched GO terms in data-driven mode. The default is \code{genes}.
-This lets you learn targets from a candidate subset but score all genes.}
+\item{enrichment_genes}{Character vector of gene symbols used to identify
+enriched GO terms in data-driven mode. The default is \code{genes}.}
 
 \item{go_cache}{Pre-loaded GO cache (gene -> GO terms). If NULL, loaded.}
 
@@ -60,9 +59,8 @@ input), percentile-normalized. A vector of zeros indicates that the
 requested genes have no annotation evidence.
 }
 \description{
-Scores genes based on GO semantic similarity to target terms (supervised)
-or auto-detected enriched terms (data-driven). Fully customizable: ontology
-selection, similarity metric, enrichment parameters, and aggregation.
+Scores genes by GO semantic similarity to specified target terms or to terms
+identified by an enrichment analysis.
 }
 \examples{
 if (interactive() && requireNamespace("org.Hs.eg.db", quietly = TRUE)) {

@@ -2,7 +2,7 @@
 % Please edit documentation in R/cache.R
 \name{set_cache_options}
 \alias{set_cache_options}
-\title{Set Cache Options}
+\title{Set cache options}
 \usage{
 set_cache_options(verbose = TRUE)
 }
@@ -13,7 +13,7 @@ set_cache_options(verbose = TRUE)
 \code{NULL}, invisibly.
 }
 \description{
-Configure caching behavior
+Configures diagnostic messages from cache operations.
 }
 \examples{
 set_cache_options(verbose = FALSE)

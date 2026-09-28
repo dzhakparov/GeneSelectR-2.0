@@ -31,11 +31,7 @@ or "rel".}
 Numeric similarity score
 }
 \description{
-Checks the cache for a previously computed similarity between two GO terms.
-If not found, computes it using the specified method and stores it.
-}
-\details{
-The cache key includes the similarity method, so switching methods
-(e.g., from "resnik" to "lin") does not return stale cached values.
+Retrieves a previously computed GO-term similarity or computes and stores a
+new value. The cache key includes the similarity method.
 }
 \keyword{internal}

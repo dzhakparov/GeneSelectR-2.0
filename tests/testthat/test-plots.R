@@ -28,7 +28,10 @@ test_that("biological assessment plot uses separate ratios", {
     data("benchmark_biology", package = "GeneSelectR2")
     file <- tempfile(fileext = ".pdf")
     grDevices::pdf(file, width = 8, height = 6)
-    shown <- plot_biology_comparison(benchmark_biology, method = "GeneSelectR 2.0")
+    shown <- plot_biology_comparison(
+        benchmark_biology,
+        method = "GeneSelectR 2.0"
+    )
     grDevices::dev.off()
     expect_equal(nrow(shown), 7)
     expect_true(file.info(file)$size > 0)

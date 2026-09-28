@@ -1,5 +1,5 @@
-# Outcome shuffling provides a gene-specific reference under joint outcome
-# independence. The resulting ratios are ranking measurements.
+## Outcome shuffling provides a gene-specific reference under joint outcome
+## independence. The resulting ratios are ranking measurements.
 
 
 compute_null_selection_frequencies <- function(

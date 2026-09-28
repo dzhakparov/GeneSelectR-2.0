@@ -2,7 +2,7 @@
 % Please edit documentation in R/biology_semantic.R
 \name{build_term_similarity_matrix}
 \alias{build_term_similarity_matrix}
-\title{Build (or Load) the Square Term-by-Term Similarity Matrix}
+\title{Build a square term-by-term similarity matrix}
 \usage{
 build_term_similarity_matrix(
   term_universe,
@@ -34,17 +34,9 @@ might touch (candidate-gene terms, plus any disease target terms).}
 Symmetric numeric matrix with dimnames = list(terms, terms)
 }
 \description{
-Computes pairwise semantic similarity across the FULL term universe once,
-and caches it to disk. Downstream comparisons slice whatever sub-block they
-need - \code{[candidate_terms, target_terms]} for the to_disease variant,
-\code{[candidate_terms, reference_terms]} for to_set.
-}
-\details{
-Building the square universe (rather than a rectangular block per fold) is
-what makes the cache useful: the universe depends only on the candidate gene
-set, the ontology, and the similarity method - none of which vary across CV
-folds, alpha values, or GS variants. The reference set for to_set DOES vary
-per fold, so a rectangular cache keyed on reference terms would miss almost
-every time. The square matrix is built once and every fold slices it free.
+Computes pairwise semantic similarity across a term universe. Downstream
+comparisons use matrix subsets for the required term sets. The cache key
+includes the term universe, ontology, similarity method, information content,
+and ancestor relationships.
 }
 \keyword{internal}

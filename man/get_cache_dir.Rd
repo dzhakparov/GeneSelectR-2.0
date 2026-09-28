@@ -2,14 +2,14 @@
 % Please edit documentation in R/cache.R
 \name{get_cache_dir}
 \alias{get_cache_dir}
-\title{Get Cache Directory (CRAN-compliant)}
+\title{Locate the package cache directory}
 \usage{
 get_cache_dir()
 }
 \value{
-Character path to cache directory
+Character path to the cache directory.
 }
 \description{
-Uses tools::R_user_dir() for proper cache location
+Uses \code{tools::R_user_dir()} to obtain a platform-specific cache location.
 }
 \keyword{internal}

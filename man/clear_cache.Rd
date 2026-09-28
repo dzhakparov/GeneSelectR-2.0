@@ -13,8 +13,7 @@ clear_cache(confirm = TRUE)
 \code{NULL}, invisibly.
 }
 \description{
-Removes both memory and disk caches.
-Use this if you want to force fresh downloads.
+Removes the package's memory and disk caches.
 }
 \examples{
 if (interactive()) {

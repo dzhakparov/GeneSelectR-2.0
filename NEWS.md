@@ -1,3 +1,20 @@
+# GeneSelectR 2.0 (version 0.99.4)
+
+- Extended both vignettes with study-design, Bioconductor interoperability,
+  external-validation, application-scope, and provenance guidance.
+- Documented all fields in the packaged benchmark result examples.
+- Moved the default STRING cache under the platform-specific R package cache.
+- Consolidated disk-cache reads and writes and added recovery from invalid
+  cache files.
+- Simplified Gene Ontology ancestor retrieval and removed redundant namespace
+  checks.
+- Added deterministic tests for semantic similarity, enrichment, and cache
+  behavior.
+- Reduced implementation comments to scientific assumptions and operational
+  constraints, and clarified internal variable names.
+- Removed committed package-check and source-archive output and corrected
+  submission metadata.
+
 # GeneSelectR 2.0 (version 0.99.3)
 
 - Restricted the package implementation to the workflow evaluated in the

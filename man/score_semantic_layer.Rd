@@ -17,8 +17,8 @@ score_semantic_layer(
 \arguments{
 \item{genes}{Character vector of candidate gene symbols to score}
 
-\item{target_terms}{Character vector of disease GO term IDs (external,
-user-supplied - this is what keeps the score non-circular)}
+\item{target_terms}{Character vector of externally specified disease GO term
+identifiers.}
 
 \item{ontology}{GO ontology branch (default "BP")}
 

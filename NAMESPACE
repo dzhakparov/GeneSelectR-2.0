@@ -19,13 +19,3 @@ export(score_network_layer)
 export(score_semantic_layer)
 export(select_genes)
 export(set_cache_options)
-importFrom(AnnotationDbi,
-  as.list,
-  select
-)
-importFrom(stats,
-  fisher.test,
-  median,
-  p.adjust,
-  quantile
-)

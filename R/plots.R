@@ -123,8 +123,8 @@ plot_gene_ranking <- function(x, n = 15L,
 #' @param x Gene-level data containing selection counts, recurrence,
 #'   contribution and disease association.
 #' @param comparison_label Label for the optional comparison-count series.
-#' @param colours Colours for GeneSelectR 2.0, the comparison series, recurrence,
-#'   contribution and association.
+#' @param colours Colours for GeneSelectR 2.0, the comparison series,
+#'   recurrence, contribution and association.
 #'
 #' @return The displayed data, invisibly.
 #' @examples

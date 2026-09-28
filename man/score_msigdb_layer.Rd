@@ -29,15 +29,12 @@ Hallmark gene sets (50 biological states).}
 \item{verbose}{Logical, print progress.}
 }
 \value{
-Numeric vector (one per gene). Raw count of disease-relevant
-gene sets containing each gene, log2-transformed. Not yet
-percentile-normalized.
+Numeric vector (one per gene). The number of matching gene sets is
+transformed as \code{log2(count + 1)}.
 }
 \description{
 For a given disease keyword, finds all matching gene sets in MSigDB's
-curated collections and scores each gene by how many of those sets
-contain it. This captures experimental replication evidence: a gene
-appearing in many published breast cancer gene sets has stronger
-evidence than one appearing in one gene set.
+curated collections and scores each gene by the number of matching sets that
+contain it.
 }
 \keyword{internal}

@@ -274,7 +274,8 @@ compute_auc <- function(y_true, predictions) {
 #' Compute the Nogueira feature-selection stability index
 #'
 #' The index is calculated from repeated selected sets. Repeated K-fold
-#' training sets overlap, so the value is descriptive for GeneSelectR 2.0 results.
+#' training sets overlap, so the value is descriptive for GeneSelectR 2.0
+#' results.
 #'
 #' @param selection_matrix Logical matrix with genes in rows and fits in
 #'   columns.

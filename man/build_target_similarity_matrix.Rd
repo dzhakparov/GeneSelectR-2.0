@@ -2,7 +2,7 @@
 % Please edit documentation in R/biology_semantic.R
 \name{build_target_similarity_matrix}
 \alias{build_target_similarity_matrix}
-\title{Build (or Load) a Candidate-Term by Target-Term Similarity Matrix}
+\title{Build a candidate-term by target-term similarity matrix}
 \usage{
 build_target_similarity_matrix(
   candidate_terms,

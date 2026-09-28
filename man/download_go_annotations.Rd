@@ -2,7 +2,7 @@
 % Please edit documentation in R/cache.R
 \name{download_go_annotations}
 \alias{download_go_annotations}
-\title{Download GO Annotations from Bioconductor Annotation Database}
+\title{Extract GO annotations from a Bioconductor annotation package}
 \usage{
 download_go_annotations(organism = "human")
 }

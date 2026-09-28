@@ -1,6 +1,7 @@
 ---
 title: "Predictive gene selection in asthma"
 author: "Damir Zhakparov"
+date: "15 September 2026"
 output:
     BiocStyle::html_document:
         toc: true
@@ -17,24 +18,36 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 # Introduction
 
 GeneSelectR 2.0 combines repeated gene inclusion and excluded-sample predictive
-contribution into a ranking. Both components are compared with shuffled-outcome
-references. The output retains individual component measurements for inspection.
-The `SummarizedExperiment` input supports use with Bioconductor expression
-analysis tools. External biological information is interpreted after selection.
+contribution in a gene ranking. Both components are compared with
+shuffled-outcome references. The output retains the individual measurements.
+The `SummarizedExperiment` interface supports use after Bioconductor expression
+preprocessing. External biological information is evaluated after selection.
 
-The example uses a small, deterministic subset of GSE69683, a U-BIOPRED blood
-expression study. It illustrates the software interface. It does not reproduce
-the full asthma benchmark or provide a new estimate of clinical performance.
+The example uses a deterministic subset of GSE69683, a U-BIOPRED blood
+expression study. It demonstrates package operation with reduced computation.
+The packaged full-cohort result summaries are displayed in later sections.
 
 # Installation
 
-The package is being prepared for submission. Install a local source archive
-before running this vignette. After Bioconductor acceptance, installation will
-use:
+The package is being prepared for Bioconductor submission. After acceptance,
+installation will use:
 
 ```{r installation, eval=FALSE}
 BiocManager::install("GeneSelectR2")
 ```
+
+# Study design and preprocessing
+
+The outcome in this example compares moderate and severe asthma. The same
+interface can represent disease versus control, treatment response, infection
+status, or a pre-specified pairwise subtype comparison. The outcome must contain
+two factor levels, with the second level treated as positive.
+
+Expression normalization, quality control, batch adjustment, and candidate-gene
+selection precede model fitting. Parameters estimated from expression data must
+be fitted within each training partition. Independent samples are required for
+a predictive-performance estimate. The internal AUC reported by GeneSelectR 2.0
+is a tuning measurement from the training workflow.
 
 # Expression and phenotype
 
@@ -43,36 +56,62 @@ library(GeneSelectR2)
 library(SummarizedExperiment)
 data(asthma_example)
 dim(asthma_example)
+assayNames(asthma_example)
 table(asthma_example$severity)
 metadata(asthma_example)
 ```
 
-Genes are rows and samples are columns. The phenotype is stored in `colData`.
-Expression has already been normalized on a log scale. Real analyses must keep
-all preprocessing, variable-gene selection and tuning inside the training data.
-An independent test partition is needed to estimate prediction performance.
+Genes are rows and samples are columns. The normalized expression measurements
+are stored in the `log_expression` assay. The phenotype is stored in `colData`.
+Sample identifiers are retained as column names. Source, platform, expression
+scale, and the deterministic subset rule are recorded in `metadata` and in
+`?asthma_example`.
+
+```{r inspect-input}
+assay(asthma_example, "log_expression")[1:4, 1:4]
+head(colData(asthma_example))
+head(rownames(asthma_example))
+```
 
 # Fit the workflow
 
-The small example uses five repeated fits, two outcome permutations and five
-fits per permutation, with one worker. These reduced counts keep package checks
-short. The published configuration used 50 fits, 20 permutations and 20 null
-fits, comparing alpha 0.5 and 1 using internal prediction AUC.
+The example uses five repeated fits, two outcome permutations, and five fits per
+permutation, with one worker. These reduced counts limit package-check time. The
+benchmark configuration used 50 fits, 20 permutations, and 20 null fits, with
+alpha values 0.5 and 1 compared by internal AUC.
 
 ```{r fit}
 fit <- select_genes(
-    asthma_example, outcome = "severity", n_genes = 20,
-    alpha = 0.5, B = 5, permutations = 2, null_B = 5,
-    workers = 1, seed = 123
+    asthma_example,
+    outcome = "severity",
+    assay_name = "log_expression",
+    n_genes = 20,
+    alpha = 0.5,
+    B = 5,
+    permutations = 2,
+    null_B = 5,
+    workers = 1,
+    seed = 123
 )
 fit$alpha_comparison
 fit$selected_genes
 ```
 
-The standard settings can be used with a training experiment as follows:
+The standard settings can be applied to a training experiment with:
 
 ```{r full-settings, eval=FALSE}
-fit <- select_genes(training_experiment, "severity", n_genes = 20)
+fit <- select_genes(
+    training_experiment,
+    outcome = "severity",
+    assay_name = "log_expression",
+    n_genes = 20,
+    alpha = c(0.5, 1),
+    B = 50,
+    permutations = 20,
+    null_B = 20,
+    workers = 1,
+    seed = 123
+)
 ```
 
 # Inspect gene-level outputs
@@ -80,58 +119,101 @@ fit <- select_genes(training_experiment, "severity", n_genes = 20)
 ```{r output}
 head(fit$gene_scores)
 fit$parameters
+fit$cv_results[c("mean_auc", "sd_auc", "n_resamples")]
+fit$stability
 ```
 
-`recurrence` is inclusion frequency among repeated models.
-`predictive_contribution` combines excluded-sample SHAP contribution frequency
-and mutual information. `adjusted_recurrence` and `adjusted_contribution`
-compare these measurements with shuffled-outcome references. The ratios are
-ranking quantities and provide no probability or significance-test
-interpretation. The `selected_genes` vector contains the requested top 20
-genes.
+`recurrence` is the inclusion frequency among repeated models.
+`predictive_contribution` combines excluded-sample contribution frequency and
+mutual information. `adjusted_recurrence` and `adjusted_contribution` compare
+these measurements with shuffled-outcome references. The ratios define ranking
+quantities. The `selected_genes` vector contains the requested top 20 genes.
 
 ```{r ranking-plot, fig.width=9, fig.height=5}
 plot_gene_ranking(fit, n = 12)
 ```
 
+# External evaluation
+
+An external cohort requires the same gene identifiers and measurement scale.
+All transformation parameters must come from the training cohort. A classifier
+is then fitted with the selected genes in the training data and applied once to
+the held-out cohort. The following outline records the required separation of
+selection, fitting, and evaluation:
+
+```{r external-evaluation, eval=FALSE}
+training_fit <- select_genes(training_experiment, "severity", n_genes = 20)
+selected <- training_fit$selected_genes
+
+x_train <- t(assay(
+    training_experiment[selected, ],
+    "log_expression"
+))
+y_train <- training_experiment$severity
+classifier <- glmnet::cv.glmnet(
+    x_train,
+    as.integer(y_train) - 1L,
+    family = "binomial",
+    alpha = training_fit$parameters$alpha
+)
+external_probability <- predict(
+    classifier,
+    newx = t(assay(
+        external_experiment[selected, ],
+        "log_expression"
+    )),
+    s = "lambda.min",
+    type = "response"
+)
+pROC::roc(
+    external_experiment$severity,
+    as.numeric(external_probability),
+    levels = levels(y_train),
+    direction = "<"
+)
+```
+
+This code requires preprocessed `training_experiment` and `external_experiment`
+objects with aligned gene identifiers and outcome levels.
+
 # Biological interpretation
 
-Biological information is assessed after predictive selection. It does not
-change the gene ranking. Gene Ontology measures functional similarity, Hallmark
-sets identify shared biological processes, Open Targets records disease
-associations, and STRING supplies protein-association context. Database coverage
-and retrieval dates must accompany interpretation. Missing annotation is kept
-distinct from a measured score of zero.
+Biological information is assessed after predictive selection. Gene Ontology
+measures functional similarity, Hallmark sets identify shared biological
+processes, Open Targets records disease associations, and STRING supplies
+protein-association context. Database coverage and retrieval dates must
+accompany interpretation. Missing annotation is recorded separately from a
+measured score of zero.
 
-The package includes the verified biological summaries used to demonstrate the
-workflow. Ratios compare each selected gene set with same-size random gene sets
-drawn from the same candidate genes. A value of one denotes the random-set
-reference. The measurements remain separate because they describe different
-properties.
+The package includes biological summaries for seven transcriptomic datasets and
+seven feature-selection methods. Ratios compare each selected gene set with
+same-size random gene sets drawn from the same training-specific candidate
+genes. A value of one is the random-set reference. The measurements are kept as
+separate results because they describe different properties.
 
 ```{r biology-heatmap, fig.width=8.5, fig.height=6.3}
 data(benchmark_biology)
 plot_biology_comparison(
-    benchmark_biology, method = "GeneSelectR 2.0",
+    benchmark_biology,
+    method = "GeneSelectR 2.0",
     dataset_order = c(
         "Atopic dermatitis", "Bladder cancer", "Asthma", "Sepsis",
-        "Psoriasis", "Tuberculosis", "Crohn disease"
+        "Psoriasis", "Tuberculosis", "Crohn's disease"
     )
 )
 ```
 
 For asthma, the selected-to-random ratios were 1.65 for GO similarity, 3.75 for
 Hallmark sharing, 1.83 for Open Targets at a score cutoff of 0.05, and 1.56 at a
-cutoff of 0.10. These are descriptive ratios. They are not probabilities,
-p-values or components of the predictive ranking.
+cutoff of 0.10. These values are descriptive ratios. Probability and
+significance interpretations require separate analyses.
 
 # Full-cohort asthma output
 
-The executable fit above uses 96 samples and 300 genes so that the vignette can
-be built during package checks. The following figure uses the verified
-full-cohort GSE69683 results reported in the manuscript: 323 samples, 15 outer
-validation divisions and sets of 20 genes. This packaged data object lets users
-inspect and reproduce the display without downloading external databases.
+The executable fit uses 96 samples and 300 genes. The following figure uses the
+full-cohort GSE69683 result extract reported in the manuscript: 323 samples, 15
+outer validation divisions, and sets of 20 genes. The packaged object supports
+inspection of the display without an external database request.
 
 ```{r case-study, fig.width=11, fig.height=5.5}
 data(asthma_case_study)
@@ -141,16 +223,52 @@ plot_gene_evidence(asthma_case_study, comparison_label = "DGE")
 Outer selection count records membership in each final top-20 gene set.
 Within-training recurrence records inclusion among the elastic-net fits used to
 construct a ranking. Adjusted contribution is compared with shuffled-outcome
-fits. The Open Targets value is a continuous recorded asthma association from
-release 26.06. `LINC00537` has no available Open Targets score and remains
-marked `NA`.
+fits. The Open Targets value is the recorded asthma association from release
+26.06. `LINC00537` has unavailable Open Targets annotation and is marked `NA`.
+
+# Application scope
+
+The workflow can be transferred to other transcriptomic binary outcomes when
+the following conditions are met:
+
+1. The two outcome levels and positive class are specified before analysis.
+2. Expression values have a documented, platform-appropriate normalization.
+3. Candidate-gene filtering and preprocessing are estimated in training data.
+4. Class sizes support the requested number of stratified folds.
+5. Independent samples or outer resampling are available for performance
+    estimation.
+6. Biological resources match the organism and identifier system.
+
+Targeted expression panels can also use the matrix interface when measurements
+are normalized and genes have unique names. The limited candidate-gene universe
+must be used for matched random-set biological comparisons.
 
 # Reproducibility
 
-The example source and deterministic subset rule are documented in
-`?asthma_example`. Small-sample example results should not be substituted for
-the full-cohort results in the manuscript. Internal AUC is used for tuning and
-is not an outer-test performance estimate.
+A complete record includes the GeneSelectR 2.0 package version, input accession
+and sample identifiers, phenotype definition, normalization method,
+candidate-gene rule, resampling counts, random seed, alpha values, worker count,
+and train-test partition. Biological analyses also require annotation-package
+versions, external-resource releases, query terms, thresholds, and retrieval
+dates.
+
+The small executable result provides an interface check. The full-cohort
+manuscript result has a separate provenance record and outer validation design.
+
+# References
+
+Friedman J, Hastie T, Tibshirani R (2010). Regularization paths for generalized
+linear models via coordinate descent. *Journal of Statistical Software* 33(1),
+1--22. doi:10.18637/jss.v033.i01.
+
+Nogueira S, Sechidis K, Brown G (2018). On the stability of feature selection
+algorithms. *Journal of Machine Learning Research* 18(174), 1--54.
+
+Shaw DE et al. (2015). Clinical and inflammatory characteristics of the European
+U-BIOPRED adult severe asthma cohort. *European Respiratory Journal* 46,
+1308--1321. doi:10.1183/13993003.00779-2015.
+
+# Session information
 
 ```{r session}
 sessionInfo()

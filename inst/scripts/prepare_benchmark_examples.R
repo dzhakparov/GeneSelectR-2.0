@@ -44,7 +44,7 @@ method_names <- c(
     LASSO = "LASSO", mRMR = "mRMR"
 )
 dataset_names <- c(
-    GSE101794 = "Crohn disease", GSE107994 = "Tuberculosis",
+    GSE101794 = "Crohn's disease", GSE107994 = "Tuberculosis",
     GSE13355 = "Psoriasis", GSE65682 = "Sepsis", GSE69683 = "Asthma",
     imvigor210 = "Bladder cancer", sosall = "Atopic dermatitis"
 )

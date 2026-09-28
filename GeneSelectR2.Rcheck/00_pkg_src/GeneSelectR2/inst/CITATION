@@ -1,8 +1,0 @@
-bibentry(
-    bibtype = "Manual",
-    title = "GeneSelectR: Predictive Gene Selection and Biological Interpretation",
-    author = person("Damir", "Zhakparov"),
-    year = "2026",
-    note = sprintf("R package version %s", meta$Version),
-    url = "https://github.com/dzhakparov/GeneSelectR-2.0"
-)

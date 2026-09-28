@@ -15,7 +15,8 @@ List containing \code{nogueira_index}.
 }
 \description{
 The index is calculated from repeated selected sets. Repeated K-fold
-training sets overlap, so the value is descriptive for GeneSelectR 2.0 results.
+training sets overlap, so the value is descriptive for GeneSelectR 2.0
+results.
 }
 \examples{
 selections <- matrix(

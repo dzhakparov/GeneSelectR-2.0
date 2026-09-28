@@ -26,8 +26,7 @@ score_network_layer(
 edge to be included (default: 400, STRING's "medium confidence")}
 
 \item{restart_prob}{Numeric, RWR restart probability (default: 0.5). Higher
-retains more probability near the seeds; lower values allow wider
-propagation.}
+values retain more probability near the seeds.}
 
 \item{max_seeds, min_score}{Passed to \code{get_disease_seeds_opentargets}}
 
@@ -44,11 +43,10 @@ Numeric vector (length = length(genes)) of percentile-normalised
 network relevance scores between 0 and 1, named by gene.
 }
 \description{
-Places the disease seed genes on the STRING functional interaction network
-and propagates relevance via random walk with restart (RWR). Each candidate
-gene receives a score equal to its stationary RWR probability - high for
-genes that are seeds themselves or sit close to many seeds in the network,
-low for genes far from disease biology.
+Places disease seed genes on the STRING functional interaction network and
+propagates their Open Targets association scores with a random walk with
+restart. Each candidate gene receives its stationary probability from the
+network propagation.
 }
 \examples{
 if (interactive()) {

@@ -17,7 +17,7 @@ bma_from_matrix(terms_a, terms_b, term_sim_matrix)
 Numeric BMA similarity
 }
 \description{
-Vectorised BMA: slice the precomputed matrix to the two term sets, take row
-maxima and column maxima, average them. No ontology traversal, no loops.
+Calculates the mean of row maxima and column maxima from the matrix subset
+defined by two term sets.
 }
 \keyword{internal}

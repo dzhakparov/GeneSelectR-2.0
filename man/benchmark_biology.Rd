@@ -3,14 +3,25 @@
 \docType{data}
 \name{benchmark_biology}
 \alias{benchmark_biology}
-\title{Verified biological assessment example}
+\title{Biological assessment example}
 \format{
-A data frame with 49 rows and 7 columns: dataset, method, stability,
-go_ratio, hallmark_ratio, open_targets_05_ratio and
-open_targets_10_ratio.
+A data frame with 49 rows and 7 columns:
+\describe{
+\item{dataset}{Study phenotype or disease label.}
+\item{method}{Feature-selection method.}
+\item{stability}{Mean Nogueira feature-selection stability.}
+\item{go_ratio}{GO semantic coherence divided by the matched random-set
+mean.}
+\item{hallmark_ratio}{Hallmark sharing divided by the matched random-set
+mean.}
+\item{open_targets_05_ratio}{Open Targets gene count at score 0.05 divided
+by the matched random-set mean.}
+\item{open_targets_10_ratio}{Open Targets gene count at score 0.10 divided
+by the matched random-set mean.}
+}
 }
 \source{
-GeneSelectR 2.0 benchmark result tables verified 10 September 2026.
+GeneSelectR 2.0 benchmark result tables extracted 10 September 2026.
 }
 \usage{
 data(benchmark_biology)

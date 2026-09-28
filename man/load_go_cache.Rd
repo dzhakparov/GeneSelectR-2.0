@@ -2,7 +2,7 @@
 % Please edit documentation in R/cache.R
 \name{load_go_cache}
 \alias{load_go_cache}
-\title{Load GO Annotations with Caching}
+\title{Load GO annotations}
 \usage{
 load_go_cache(organism = "human", force_reload = FALSE)
 }
@@ -15,13 +15,8 @@ load_go_cache(organism = "human", force_reload = FALSE)
 Named list mapping gene symbols to GO term ID vectors
 }
 \description{
-Loads GO annotations (gene symbol -> GO term IDs) from memory cache,
-disk cache, or org.Hs.eg.db. Results are cached for fast reuse.
-}
-\details{
-IMPORTANT: This function guards against empty caches. If a previous
-download failed and saved an empty list to disk, the stale file is
-removed and the download is retried.
+Loads gene-symbol-to-GO-term mappings from memory, the package cache, or an
+organism annotation package. Empty cache entries are removed and rebuilt.
 }
 \examples{
 if (interactive() && requireNamespace("org.Hs.eg.db", quietly = TRUE)) {

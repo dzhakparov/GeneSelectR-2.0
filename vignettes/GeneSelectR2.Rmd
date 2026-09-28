@@ -1,7 +1,7 @@
 ---
 title: "GeneSelectR 2.0 workflow"
 author: "Damir Zhakparov"
-date: "`r Sys.Date()`"
+date: "15 September 2026"
 output:
     BiocStyle::html_document:
         toc: true
@@ -17,76 +17,239 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 
 # Introduction
 
-GeneSelectR 2.0 ranks genes for a binary outcome. The result contains recurrence
-across repeated elastic-net models, excluded-sample predictive contribution,
-shuffled-outcome-adjusted measurements, and the combined ranking. Biological
-interpretation is performed after gene ranking. This vignette uses a compact
-simulated dataset so that the code is evaluated during package checks.
+GeneSelectR 2.0 ranks genes for a binary outcome from normalized expression
+measurements. Repeated elastic-net models provide gene-selection recurrence and
+excluded-sample predictive contribution. Outcome permutations provide a
+gene-specific reference for each quantity. The combined score defines the
+ranking, and the component measurements remain available for inspection.
+
+The package addresses predictive feature selection in transcriptomic studies.
+Relevant applications include disease status, treatment response, infection
+status, and pairwise molecular-subtype comparisons. Each analysis requires a
+pre-specified two-level outcome. Survival, continuous-outcome, and multiclass
+models require separate methods.
+
+Differential-expression packages such as `limma`, `edgeR`, and `DESeq2` estimate
+feature-wise effects and associated uncertainty. GeneSelectR 2.0 estimates a
+multivariable predictive ranking. Both analyses can be reported when the study
+contains inferential and predictive objectives.
 
 # Installation
 
-After Bioconductor acceptance:
+After Bioconductor acceptance, the package can be installed with:
 
 ```{r installation, eval=FALSE}
 BiocManager::install("GeneSelectR2")
 ```
 
-# Input
+The package name used in R code is `GeneSelectR2`. Descriptive text uses
+GeneSelectR 2.0.
 
-The expression matrix has samples in rows and genes in columns. The outcome is
-a two-level factor.
+# Study design
 
-```{r data}
+Model development and performance evaluation require separate sample sets.
+Normalization parameters, batch-adjustment parameters, variable-gene filters,
+and model tuning must be estimated from the training samples. An independent
+test set or an outer resampling loop is required for a predictive-performance
+estimate. The internal AUC returned by the package is used to compare elastic-
+net mixing values within the training data.
+
+The input expression values must be numeric, finite, and normalized for the
+measurement platform. Count data can be transformed with an appropriate
+Bioconductor workflow before gene selection. Gene identifiers must be unique
+within the input object.
+
+# Input representations
+
+The low-level interface uses a samples-by-genes matrix and a two-level factor.
+The second factor level defines the positive class.
+
+```{r matrix-input}
 library(GeneSelectR2)
 
 set.seed(10)
-n <- 40
-p <- 20
-X <- matrix(rnorm(n * p), nrow = n, ncol = p)
-colnames(X) <- paste0("gene", seq_len(p))
-y <- factor(
-    rep(c("control", "case"), each = n / 2),
+n_samples <- 40
+n_genes <- 20
+expression_matrix <- matrix(
+    rnorm(n_samples * n_genes),
+    nrow = n_samples,
+    ncol = n_genes,
+    dimnames = list(
+        paste0("sample", seq_len(n_samples)),
+        paste0("gene", seq_len(n_genes))
+    )
+)
+outcome <- factor(
+    rep(c("control", "case"), each = n_samples / 2),
     levels = c("control", "case")
 )
-X[y == "case", 1:3] <- X[y == "case", 1:3] + 1
+expression_matrix[outcome == "case", 1:3] <-
+    expression_matrix[outcome == "case", 1:3] + 1
 ```
+
+A `SummarizedExperiment` stores genes in rows, samples in columns, phenotypes in
+`colData`, and provenance in `metadata`. This representation supports transfer
+from other Bioconductor expression workflows.
+
+```{r summarized-experiment}
+experiment <- SummarizedExperiment::SummarizedExperiment(
+    assays = list(log_expression = t(expression_matrix)),
+    colData = data.frame(
+        outcome = outcome,
+        row.names = rownames(expression_matrix)
+    )
+)
+dim(experiment)
+SummarizedExperiment::assayNames(experiment)
+```
+
+`select_genes()` accepts this object directly. The asthma vignette provides an
+evaluated `SummarizedExperiment` analysis. `geneselectr2_fit()` exposes the
+matrix interface used below.
 
 # Model fitting
 
-The settings below use five stratified folds. Specify the gene-set size and
-resampling settings before an analysis.
+The example uses reduced resampling counts to keep the vignette build short.
+The `random_seed` controls resampling, outcome permutations, and model fitting.
+One worker is used by default.
 
 ```{r fit}
 fit <- geneselectr2_fit(
-    X,
-    y,
+    expression_matrix,
+    outcome,
     B = 5,
     permutations = 2,
     null_B = 5,
+    random_seed = 123,
+    workers = 1,
     verbose = FALSE
 )
+fit
 ```
 
-# Results
+The number of repeated fits, permutations, and null fits controls Monte Carlo
+precision and computation time. These values should be specified in the
+analysis protocol. The same values and seed should be retained for all methods
+within a comparison.
 
-`gene_scores` contains one row per input gene. The table retains every
-measurement used to create the ranking.
+# Gene-level results
+
+`gene_scores` contains one row per input gene. `recurrence` is the fraction of
+repeated models with a non-zero coefficient. `predictive_contribution` combines
+excluded-sample contribution frequency and mutual information.
+`adjusted_recurrence` and `adjusted_contribution` divide the observed quantities
+by their gene-specific shuffled-outcome means. `final_score` defines the rank.
 
 ```{r results}
+names(fit$gene_scores)
 head(fit$gene_scores[, c(
-    "gene", "recurrence", "adjusted_contribution", "final_score"
+    "gene", "recurrence", "predictive_contribution",
+    "adjusted_recurrence", "adjusted_contribution", "final_score"
 )])
 fit$stability["nogueira_index"]
 fit$cv_results[c("mean_auc", "sd_auc", "n_resamples")]
 ```
 
+The adjusted quantities are descriptive ranking measurements. Statistical
+significance and false-discovery control require a separate inferential
+analysis. The Nogueira index summarizes agreement among the repeated selected
+sets. Its interpretation depends on the number of candidate genes, selected-set
+size, and resampling design.
+
+```{r ranking-plot, fig.width=9, fig.height=5}
+plot_gene_ranking(fit, n = 12)
+```
+
+# High-level selection
+
+`select_genes()` compares the supplied `alpha` values by internal AUC and
+returns the requested number of genes. A typical training-object call is:
+
+```{r high-level-call, eval=FALSE}
+selected_fit <- select_genes(
+    training_experiment,
+    outcome = "outcome",
+    assay_name = "log_expression",
+    n_genes = 20,
+    alpha = c(0.5, 1),
+    B = 50,
+    permutations = 20,
+    null_B = 20,
+    workers = 1,
+    seed = 123
+)
+```
+
+An external cohort must receive preprocessing parameters estimated from the
+training cohort. Prediction assessment also requires a model fitted on the
+training data and a pre-specified performance metric. The gene ranking alone is
+insufficient for an external-performance estimate.
+
+# Biological assessment
+
+Biological assessment is performed after predictive ranking. The package
+supports GO semantic similarity, MSigDB membership, Open Targets disease
+associations, and STRING network proximity. Annotation availability, database
+versions, organism, query terms, score thresholds, and retrieval dates form
+part of the analysis provenance.
+
+GO semantic scoring can use externally specified disease terms:
+
+```{r semantic-example, eval=FALSE}
+semantic_scores <- score_semantic_layer(
+    fit$gene_scores$gene,
+    target_terms = c("GO:0006955", "GO:0002376"),
+    ontology = "BP",
+    organism = "human"
+)
+```
+
+Network scoring retrieves disease-associated seed genes from Open Targets and
+propagates their scores over STRING. These functions require internet access on
+the first call. Retrieved resources are stored under the platform-specific R
+cache directory. Cached Open Targets records include the submitted term,
+resolved ontology identifier, and retrieval date.
+
+```{r network-example, eval=FALSE}
+network_scores <- score_network_layer(
+    fit$gene_scores$gene,
+    disease_term = "EFO_0000274",
+    max_seeds = 100,
+    min_score = 0.1
+)
+cache_info()
+```
+
+Missing annotation must remain distinguishable from measured zero evidence.
+Database-derived scores are descriptive evidence measurements and require
+matched random-gene-set comparisons for contextual interpretation.
+
 # Reproducibility
 
-The returned `parameters` element records the model settings. Analyses should
-also record the package version, R version, annotation-database versions, and
-external-resource retrieval dates.
+The returned `parameters` element records the model settings. A complete
+analysis record should also contain the package version, R version, annotation-
+database versions, external-resource retrieval dates, input identifiers,
+preprocessing specification, candidate-gene rule, and train-test partition.
 
 ```{r provenance}
 fit$parameters
+packageVersion("GeneSelectR2")
+```
+
+# References
+
+Friedman J, Hastie T, Tibshirani R (2010). Regularization paths for generalized
+linear models via coordinate descent. *Journal of Statistical Software* 33(1),
+1--22. doi:10.18637/jss.v033.i01.
+
+Nogueira S, Sechidis K, Brown G (2018). On the stability of feature selection
+algorithms. *Journal of Machine Learning Research* 18(174), 1--54.
+
+Morgan M, Obenchain V, Hester J, Pagès H (2026). *SummarizedExperiment:
+SummarizedExperiment container*. Bioconductor package.
+
+# Session information
+
+```{r session-information}
 sessionInfo()
 ```

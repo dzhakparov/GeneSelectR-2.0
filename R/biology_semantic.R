@@ -1,8 +1,8 @@
-# GO semantic similarity against externally specified disease terms.
-# Rectangular term matrices support disease scoring. Square matrices are
-# retained for downstream gene-set coherence calculations.
+## GO semantic similarity against externally specified disease terms.
+## Rectangular matrices support disease scoring. Square matrices support
+## downstream gene-set coherence calculations.
 
-#' Build (or Load) a Candidate-Term by Target-Term Similarity Matrix
+#' Build a candidate-term by target-term similarity matrix
 #'
 #' Computes the exact rectangular block used by disease-target semantic
 #' scoring. Similarities among candidate terms are omitted because they do not
@@ -66,8 +66,8 @@ build_target_similarity_matrix <- function(candidate_terms,
             )
         }
 
-        if (!is.null(cache_file) && file.exists(cache_file)) {
-            cached <- tryCatch(readRDS(cache_file), error = function(e) NULL)
+        if (!is.null(cache_file)) {
+            cached <- .read_cache_file(cache_file)
             if (!is.null(cached) &&
                 identical(rownames(cached), row_terms) &&
                 identical(colnames(cached), column_terms)) {
@@ -102,21 +102,7 @@ build_target_similarity_matrix <- function(candidate_terms,
     }
 
     if (use_cache && !is.null(cache_file)) {
-        # Write to a temporary file in the same directory and rename it. Readers
-        # A reader obtains either the earlier complete cache or the new cache.
-        temporary_file <- tempfile(
-            pattern = paste0(basename(cache_file), "."),
-            tmpdir = dirname(cache_file)
-        )
-        on.exit(unlink(temporary_file), add = TRUE)
-        saveRDS(similarity_matrix, temporary_file)
-        renamed <- file.rename(temporary_file, cache_file)
-        if (!renamed && !file.exists(cache_file)) {
-            warning(
-                "The semantic target-matrix cache could not be installed",
-                call. = FALSE
-            )
-        }
+        .write_cache_file(similarity_matrix, cache_file)
         if (verbose) {
             message("    Cached target-term similarity matrix to disk\n")
         }
@@ -125,19 +111,12 @@ build_target_similarity_matrix <- function(candidate_terms,
     similarity_matrix
 }
 
-#' Build (or Load) the Square Term-by-Term Similarity Matrix
+#' Build a square term-by-term similarity matrix
 #'
-#' Computes pairwise semantic similarity across the FULL term universe once,
-#' and caches it to disk. Downstream comparisons slice whatever sub-block they
-#' need - \code{[candidate_terms, target_terms]} for the to_disease variant,
-#' \code{[candidate_terms, reference_terms]} for to_set.
-#'
-#' Building the square universe (rather than a rectangular block per fold) is
-#' what makes the cache useful: the universe depends only on the candidate gene
-#' set, the ontology, and the similarity method - none of which vary across CV
-#' folds, alpha values, or GS variants. The reference set for to_set DOES vary
-#' per fold, so a rectangular cache keyed on reference terms would miss almost
-#' every time. The square matrix is built once and every fold slices it free.
+#' Computes pairwise semantic similarity across a term universe. Downstream
+#' comparisons use matrix subsets for the required term sets. The cache key
+#' includes the term universe, ontology, similarity method, information content,
+#' and ancestor relationships.
 #'
 #' @param term_universe Character vector of all GO term IDs that any comparison
 #'   might touch (candidate-gene terms, plus any disease target terms).
@@ -162,8 +141,6 @@ build_term_similarity_matrix <- function(term_universe,
         return(matrix(0, 0, 0))
     }
 
-    # --- Cache key: depends ONLY on the universe + similarity parameters.
-    # Deliberately fold-independent, so every CV fold hits the same cached file.
     cache_file <- NULL
     if (use_cache) {
         if (!requireNamespace("digest", quietly = TRUE)) {
@@ -173,7 +150,6 @@ build_term_similarity_matrix <- function(term_universe,
             )
             use_cache <- FALSE
         } else {
-            # Include the IC values and ancestor relationships in the cache key.
             key_hash <- digest::digest(
                 list(
                     method = method,
@@ -191,9 +167,9 @@ build_term_similarity_matrix <- function(term_universe,
             )
         }
 
-        if (!is.null(cache_file) && file.exists(cache_file)) {
+        if (!is.null(cache_file)) {
             if (verbose) message("    Loading cached term similarity matrix\n")
-            cached <- tryCatch(readRDS(cache_file), error = function(e) NULL)
+            cached <- .read_cache_file(cache_file)
             if (!is.null(cached) && nrow(cached) == n_terms &&
                 identical(rownames(cached), terms)) {
                 return(cached)
@@ -214,15 +190,15 @@ build_term_similarity_matrix <- function(term_universe,
     sim_matrix <- matrix(0, n_terms, n_terms, dimnames = list(terms, terms))
     diag(sim_matrix) <- 1
 
-    # Symmetric metric: compute the upper triangle only, mirror it.
+    ## Similarity is symmetric, so only the upper triangle is computed.
     for (i in seq_len(n_terms - 1)) {
         for (j in (i + 1):n_terms) {
-            s <- compute_semantic_similarity(
+            pair_similarity <- compute_semantic_similarity(
                 terms[i], terms[j],
                 ic_scores, ancestor_map, method
             )
-            sim_matrix[i, j] <- s
-            sim_matrix[j, i] <- s
+            sim_matrix[i, j] <- pair_similarity
+            sim_matrix[j, i] <- pair_similarity
         }
         if (verbose && i %% 250 == 0) {
             message(sprintf(
@@ -233,7 +209,7 @@ build_term_similarity_matrix <- function(term_universe,
     }
 
     if (use_cache && !is.null(cache_file)) {
-        saveRDS(sim_matrix, cache_file)
+        .write_cache_file(sim_matrix, cache_file)
         if (verbose) message("    Cached term similarity matrix to disk\n")
     }
 
@@ -243,8 +219,8 @@ build_term_similarity_matrix <- function(term_universe,
 
 #' Best-Match Average From a Precomputed Term Matrix
 #'
-#' Vectorised BMA: slice the precomputed matrix to the two term sets, take row
-#' maxima and column maxima, average them. No ontology traversal, no loops.
+#' Calculates the mean of row maxima and column maxima from the matrix subset
+#' defined by two term sets.
 #'
 #' @param terms_a Terms indexing the matrix rows
 #' @param terms_b Terms indexing the matrix columns
@@ -267,10 +243,53 @@ bma_from_matrix <- function(terms_a, terms_b, term_sim_matrix) {
     mean(c(best_a_to_b, best_b_to_a))
 }
 
+.load_semantic_resources <- function(organism, ontology, use_cache) {
+    go_cache <- load_go_cache(organism = organism)
+    go_cache <- filter_go_cache_by_ontology(go_cache, ontology = ontology)
+    list(
+        go_cache = go_cache,
+        ic_scores = load_ic_cache(go_cache),
+        ancestor_map = load_ancestor_map(
+            organism = organism,
+            use_cache = use_cache
+        )
+    )
+}
 
-# -----------------------------------------------------------------------------
-#  Main scorer
-# -----------------------------------------------------------------------------
+.annotated_go_genes <- function(genes, go_cache) {
+    genes <- intersect(genes, names(go_cache))
+    genes[vapply(
+        go_cache[genes],
+        function(terms) !is.null(terms) && length(terms) > 0L,
+        logical(1)
+    )]
+}
+
+.score_gene_terms <- function(genes, gene_terms, target_terms, term_matrix) {
+    scores <- stats::setNames(rep(0, length(genes)), genes)
+    for (gene in names(gene_terms)) {
+        scores[gene] <- bma_from_matrix(
+            gene_terms[[gene]],
+            target_terms,
+            term_matrix
+        )
+    }
+    scores
+}
+
+.report_semantic_scores <- function(scores, n_annotated, n_targets) {
+    message(sprintf(
+        "  Semantic: %d annotated genes vs %d target terms\n",
+        n_annotated,
+        n_targets
+    ))
+    message(sprintf(
+        "    %d/%d genes received similarity scores\n",
+        sum(scores > 0),
+        length(scores)
+    ))
+}
+
 
 #' Score Genes by Semantic Similarity to Disease Biology
 #'
@@ -281,8 +300,8 @@ bma_from_matrix <- function(terms_a, terms_b, term_sim_matrix) {
 #' evaluated separately with \code{\link{evaluate_gene_set_coherence}}.
 #'
 #' @param genes Character vector of candidate gene symbols to score
-#' @param target_terms Character vector of disease GO term IDs (external,
-#'   user-supplied - this is what keeps the score non-circular)
+#' @param target_terms Character vector of externally specified disease GO term
+#'   identifiers.
 #' @param ontology GO ontology branch (default "BP")
 #' @param sim_method Term-pair similarity metric (default "resnik")
 #' @param organism Organism for the GO cache (default "human")
@@ -314,35 +333,20 @@ score_semantic_layer <- function(genes,
         )
     }
 
-    # --- GO annotations for the chosen ontology branch ---
-    go_cache <- load_go_cache(organism = organism)
-    go_cache <- filter_go_cache_by_ontology(go_cache, ontology = ontology)
-    ic_scores <- load_ic_cache(go_cache)
-    ancestor_map <- load_ancestor_map(
-        organism = organism,
-        use_cache = use_cache
-    )
-
-    gene_terms <- go_cache[genes]
-    names(gene_terms) <- genes
-    has_terms <- vapply(
-        gene_terms,
-        function(t) !is.null(t) && length(t) > 0,
-        logical(1)
-    )
-
-    if (sum(has_terms) == 0) {
+    resources <- .load_semantic_resources(organism, ontology, use_cache)
+    annotated_genes <- .annotated_go_genes(genes, resources$go_cache)
+    if (length(annotated_genes) == 0L) {
         warning("No candidate genes have GO annotations; returning zeros.")
         return(zero_scored)
     }
 
-    # Disease-target scoring only reads the rectangular block from candidate
-    # annotation terms to the externally specified targets.
-    candidate_terms <- unique(unlist(gene_terms[has_terms], use.names = FALSE))
+    gene_terms <- resources$go_cache[annotated_genes]
+    candidate_terms <- unique(unlist(gene_terms, use.names = FALSE))
     term_sim <- build_target_similarity_matrix(
         candidate_terms = candidate_terms,
         target_terms = target_terms,
-        ic_scores = ic_scores, ancestor_map = ancestor_map,
+        ic_scores = resources$ic_scores,
+        ancestor_map = resources$ancestor_map,
         method = sim_method, ontology = ontology,
         use_cache = use_cache, verbose = verbose
     )
@@ -350,35 +354,112 @@ score_semantic_layer <- function(genes,
         return(zero_scored)
     }
 
-    if (verbose) {
-        message(sprintf(
-            "  Semantic: %d annotated genes vs %d target terms\n",
-            sum(has_terms), length(target_terms)
-        ))
-    }
+    raw_scores <- .score_gene_terms(
+        genes, gene_terms, target_terms, term_sim
+    )
 
-    raw_scores <- stats::setNames(rep(0, n_genes), genes)
-    for (gene in genes[has_terms]) {
-        raw_scores[gene] <- bma_from_matrix(
-            gene_terms[[gene]],
-            target_terms, term_sim
+    if (verbose) {
+        .report_semantic_scores(
+            raw_scores,
+            length(annotated_genes),
+            length(target_terms)
         )
-    }
-
-    if (verbose) {
-        message(sprintf(
-            "    %d/%d genes received similarity scores\n",
-            sum(raw_scores > 0), n_genes
-        ))
     }
 
     percentile01(raw_scores)
 }
 
+.gene_set_coherence <- function(gene_set, go_cache, term_matrix) {
+    n_genes <- length(gene_set)
+    if (n_genes < 2L) {
+        return(NA_real_)
+    }
+    term_sets <- go_cache[gene_set]
+    pair_values <- numeric(n_genes * (n_genes - 1L) / 2L)
+    pair_index <- 1L
+    for (i in seq_len(n_genes - 1L)) {
+        for (j in (i + 1L):n_genes) {
+            pair_values[pair_index] <- bma_from_matrix(
+                term_sets[[i]], term_sets[[j]], term_matrix
+            )
+            pair_index <- pair_index + 1L
+        }
+    }
+    mean(pair_values, na.rm = TRUE)
+}
 
-# -----------------------------------------------------------------------------
-#  Post-hoc gene-set coherence
-# -----------------------------------------------------------------------------
+.coherence_null <- function(
+    background_genes,
+    selected_genes,
+    go_cache,
+    term_matrix,
+    n_permutations
+) {
+    background <- setdiff(
+        .annotated_go_genes(background_genes, go_cache),
+        selected_genes
+    )
+    if (length(background) < length(selected_genes)) {
+        return(list(expected = NA_real_, empirical_p = NA_real_))
+    }
+    null_values <- replicate(
+        n_permutations,
+        .gene_set_coherence(
+            sample(background, length(selected_genes)),
+            go_cache,
+            term_matrix
+        )
+    )
+    list(
+        expected = mean(null_values, na.rm = TRUE),
+        null_values = null_values
+    )
+}
+
+.prepare_coherence_context <- function(
+    gene_set,
+    background_genes,
+    resources,
+    sim_method,
+    ontology,
+    use_cache,
+    verbose
+) {
+    selected <- .annotated_go_genes(gene_set, resources$go_cache)
+    if (length(selected) < 2L) {
+        warning(
+            "Fewer than two selected genes have GO annotations.",
+            call. = FALSE
+        )
+        return(NULL)
+    }
+    universe_genes <- if (is.null(background_genes)) {
+        selected
+    } else {
+        unique(c(
+            selected,
+            .annotated_go_genes(background_genes, resources$go_cache)
+        ))
+    }
+    term_universe <- unique(unlist(
+        resources$go_cache[universe_genes],
+        use.names = FALSE
+    ))
+    term_matrix <- build_term_similarity_matrix(
+        term_universe = term_universe,
+        ic_scores = resources$ic_scores,
+        ancestor_map = resources$ancestor_map,
+        method = sim_method,
+        ontology = ontology,
+        use_cache = use_cache,
+        verbose = verbose
+    )
+    if (nrow(term_matrix) == 0L) {
+        return(NULL)
+    }
+    list(selected = selected, term_matrix = term_matrix)
+}
+
 
 #' Evaluate the Semantic Coherence of a Selected Gene Set
 #'
@@ -423,67 +504,16 @@ evaluate_gene_set_coherence <- function(
         expected_coherence = NA_real_, empirical_p = NA_real_
     )
 
-    go_cache <- load_go_cache(organism = organism)
-    go_cache <- filter_go_cache_by_ontology(go_cache, ontology = ontology)
-    ic_scores <- load_ic_cache(go_cache)
-    ancestor_map <- load_ancestor_map(
-        organism = organism,
-        use_cache = use_cache
+    resources <- .load_semantic_resources(organism, ontology, use_cache)
+    context <- .prepare_coherence_context(
+        gene_set, background_genes, resources, sim_method,
+        ontology, use_cache, verbose
     )
-
-    annotated <- function(gene_set) {
-        gene_set <- intersect(gene_set, names(go_cache))
-        gene_set[vapply(
-            go_cache[gene_set],
-            function(t) !is.null(t) && length(t) > 0, logical(1)
-        )]
-    }
-
-    selected_annotated <- annotated(gene_set)
-    if (length(selected_annotated) < 2) {
-        warning(
-            "Fewer than two selected genes have GO annotations.",
-            call. = FALSE
-        )
+    if (is.null(context)) {
         return(empty_result)
     }
-
-    # Use one term matrix for the selected and random gene sets.
-    universe_genes <- if (is.null(background_genes)) {
-        selected_annotated
-    } else {
-        unique(c(selected_annotated, annotated(background_genes)))
-    }
-    term_universe <- unique(unlist(go_cache[universe_genes], use.names = FALSE))
-
-    term_sim <- build_term_similarity_matrix(
-        term_universe = term_universe,
-        ic_scores = ic_scores, ancestor_map = ancestor_map,
-        method = sim_method, ontology = ontology,
-        use_cache = use_cache, verbose = verbose
-    )
-    if (nrow(term_sim) == 0) {
-        return(empty_result)
-    }
-
-    # Mean pairwise BMA similarity within a gene set.
-    set_coherence <- function(gene_set) {
-        n <- length(gene_set)
-        if (n < 2) {
-            return(NA_real_)
-        }
-        term_sets <- go_cache[gene_set]
-        vals <- c()
-        for (i in seq_len(n - 1)) {
-            for (j in (i + 1):n) {
-                similarity <- bma_from_matrix(
-                    term_sets[[i]], term_sets[[j]], term_sim
-                )
-                vals <- c(vals, similarity)
-            }
-        }
-        mean(vals, na.rm = TRUE)
-    }
+    selected_annotated <- context$selected
+    term_sim <- context$term_matrix
 
     if (verbose) {
         message(sprintf(
@@ -491,37 +521,34 @@ evaluate_gene_set_coherence <- function(
             length(selected_annotated)
         ))
     }
-    observed <- set_coherence(selected_annotated)
+    observed <- .gene_set_coherence(
+        selected_annotated,
+        resources$go_cache,
+        term_sim
+    )
 
-    # --- Empirical null ---
     expected <- NA_real_
     empirical_p <- NA_real_
 
     if (!is.null(background_genes)) {
-        background_annotated <- annotated(background_genes)
-        background_annotated <- setdiff(
-            background_annotated,
-            selected_annotated
+        if (verbose) {
+            message(sprintf(
+                "  Comparing with %d random gene sets...\n",
+                n_permutations
+            ))
+        }
+        null_result <- .coherence_null(
+            background_genes,
+            selected_annotated,
+            resources$go_cache,
+            term_sim,
+            n_permutations
         )
-
-        if (length(background_annotated) >= length(selected_annotated)) {
-            if (verbose) {
-                message(sprintf(
-                    "  Comparing with %d random gene sets...\n",
-                    n_permutations
-                ))
-            }
-            null_values <- numeric(n_permutations)
-            for (p in seq_len(n_permutations)) {
-                random_gene_set <- sample(
-                    background_annotated,
-                    length(selected_annotated)
-                )
-                null_values[p] <- set_coherence(random_gene_set)
-            }
-            expected <- mean(null_values, na.rm = TRUE)
-            empirical_p <- (sum(null_values >= observed, na.rm = TRUE) + 1) /
-                (n_permutations + 1)
+        expected <- null_result$expected
+        if (!is.null(null_result$null_values)) {
+            empirical_p <- (
+                sum(null_result$null_values >= observed, na.rm = TRUE) + 1
+            ) / (n_permutations + 1)
         }
     }
 

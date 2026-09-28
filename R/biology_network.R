@@ -1,15 +1,78 @@
-# =============================================================================
-# GeneSelectR 2.0 - Network-Propagation Biology Scorer
-# =============================================================================
-#
-# Open Targets supplies disease-associated genes. STRING random walk with
-# restart assigns network-proximity scores to candidate genes. Retrieved seed
-# sets are cached with their query settings.
+## Open Targets supplies disease-associated genes. A random walk with restart
+## on STRING assigns network-proximity scores to candidate genes.
 
+.is_ontology_id <- function(disease_term) {
+    grepl("^(EFO|MONDO|HP|Orphanet|DOID)[:_]", disease_term)
+}
 
-# -----------------------------------------------------------------------------
-#  Open Targets seed derivation
-# -----------------------------------------------------------------------------
+.require_packages <- function(packages, context) {
+    missing_packages <- packages[!vapply(
+        packages,
+        requireNamespace,
+        quietly = TRUE,
+        FUN.VALUE = logical(1)
+    )]
+    if (length(missing_packages) > 0L) {
+        stop(
+            sprintf(
+                "%s requires: %s",
+                context,
+                paste(sprintf("'%s'", missing_packages), collapse = ", ")
+            ),
+            call. = FALSE
+        )
+    }
+}
+
+.open_targets_request <- function(query, variables, request_name) {
+    endpoint <- "https://api.platform.opentargets.org/api/v4/graphql"
+    response <- tryCatch(
+        httr::POST(
+            endpoint,
+            body = list(query = query, variables = variables),
+            encode = "json"
+        ),
+        error = identity
+    )
+    if (inherits(response, "error")) {
+        stop(
+            sprintf("%s failed: %s", request_name, conditionMessage(response)),
+            call. = FALSE
+        )
+    }
+
+    status <- httr::status_code(response)
+    if (status != 200L) {
+        stop(
+            sprintf("%s returned HTTP %d", request_name, status),
+            call. = FALSE
+        )
+    }
+
+    parsed <- tryCatch(
+        jsonlite::fromJSON(
+            httr::content(response, as = "text", encoding = "UTF-8")
+        ),
+        error = identity
+    )
+    if (inherits(parsed, "error")) {
+        stop(
+            sprintf("%s returned invalid JSON", request_name),
+            call. = FALSE
+        )
+    }
+    if (!is.null(parsed$errors)) {
+        messages <- tryCatch(
+            paste(parsed$errors$message, collapse = "; "),
+            error = function(e) "unparseable GraphQL error"
+        )
+        stop(
+            sprintf("%s was rejected: %s", request_name, messages),
+            call. = FALSE
+        )
+    }
+    parsed
+}
 
 #' Resolve a Disease Name to an EFO ID via Open Targets Search
 #'
@@ -19,75 +82,31 @@
 #' @return Character EFO ID (e.g. "EFO_0000274"), or NULL if not resolved
 #' @keywords internal
 resolve_efo_id <- function(disease_term, verbose = FALSE) {
-    if (!requireNamespace("httr", quietly = TRUE) ||
-        !requireNamespace("jsonlite", quietly = TRUE)) {
-        dependency_message <- paste(
-            "Network biology requires 'httr' and 'jsonlite'.",
-            "Install both packages before running this function."
-        )
-        stop(
-            dependency_message,
-            call. = FALSE
-        )
-    }
-
-    # If the term already looks like an EFO/MONDO/ontology ID, pass it through.
-    if (grepl("^(EFO|MONDO|HP|Orphanet|DOID)[:_]", disease_term)) {
+    if (.is_ontology_id(disease_term)) {
         if (verbose) {
-            message("    The term is already an ontology ID; using it as-is.\n")
+            message("    The submitted term is an ontology identifier.\n")
         }
         return(gsub(":", "_", disease_term))
     }
-
-    endpoint <- "https://api.platform.opentargets.org/api/v4/graphql"
+    .require_packages(c("httr", "jsonlite"), "Open Targets disease search")
 
     query <- '
     query resolve($q: String!) {
         search(
-        queryString: $q,
-        entityNames: ["disease"],
-        page: {index: 0, size: 1}
+            queryString: $q,
+            entityNames: ["disease"],
+            page: {index: 0, size: 1}
         ) {
-        hits { id name entity }
+            hits { id name entity }
         }
     }'
-
-    response <- tryCatch(
-        httr::POST(endpoint,
-            body = list(
-                query = query,
-                variables = list(q = disease_term)
-            ),
-            encode = "json"
-        ),
-        error = function(e) NULL
+    parsed <- .open_targets_request(
+        query,
+        list(q = disease_term),
+        "Open Targets disease search"
     )
-    if (is.null(response)) stop("Open Targets disease search request failed")
-    if (httr::status_code(response) != 200) {
-        stop(
-            sprintf(
-                "Open Targets disease search returned HTTP %d",
-                httr::status_code(response)
-            ),
-            call. = FALSE
-        )
-    }
-
-    parsed <- tryCatch(
-        jsonlite::fromJSON(httr::content(response,
-            as = "text",
-            encoding = "UTF-8"
-        )),
-        error = function(e) NULL
-    )
-    if (is.null(parsed)) {
-        stop("Open Targets disease search returned invalid JSON")
-    }
-    if (!is.null(parsed$errors)) {
-        stop("Open Targets rejected the disease search query", call. = FALSE)
-    }
     hits <- parsed$data$search$hits
-    if (is.null(hits) || length(hits) == 0 || nrow(hits) == 0) {
+    if (is.null(hits) || length(hits) == 0L || nrow(hits) == 0L) {
         stop(
             sprintf(
                 "Open Targets found no disease matching '%s'",
@@ -96,36 +115,172 @@ resolve_efo_id <- function(disease_term, verbose = FALSE) {
             call. = FALSE
         )
     }
-
     if (verbose) {
         message(sprintf(
             "    Search matched '%s' to %s.\n",
             hits$name[1], hits$id[1]
         ))
     }
-    # Attach the resolved disease name so callers can record (not just print)
-    # what the query actually resolved to. A top-1 search hit can resolve to a
-    # neighbouring disease, and silent mis-resolution is a wrong-prior fault.
-    id <- hits$id[1]
-    attr(id, "resolved_name") <- hits$name[1]
-    id
+
+    efo_id <- hits$id[1]
+    attr(efo_id, "resolved_name") <- hits$name[1]
+    efo_id
 }
 
+.empty_seed_table <- function() {
+    data.frame(
+        ensembl_id = character(),
+        symbol = character(),
+        score = numeric(),
+        stringsAsFactors = FALSE
+    )
+}
+
+.seed_cache_file <- function(efo_id, max_seeds, min_score) {
+    file.path(
+        get_cache_dir(),
+        sprintf(
+            "ot_seeds_%s_n%d_s%g.rds",
+            gsub("[^A-Za-z0-9]", "", efo_id),
+            max_seeds,
+            min_score
+        )
+    )
+}
+
+.find_seed_cache <- function(disease_term, max_seeds, min_score, verbose) {
+    seed_pattern <- sprintf(
+        "^ot_seeds_.*_n%d_s%s\\.rds$",
+        max_seeds,
+        format(min_score, trim = TRUE)
+    )
+    cached_files <- list.files(
+        get_cache_dir(),
+        pattern = seed_pattern,
+        full.names = TRUE
+    )
+    for (candidate_file in cached_files) {
+        seeds <- .read_cache_file(candidate_file)
+        valid_columns <- !is.null(seeds) &&
+            all(c("ensembl_id", "symbol", "score") %in% colnames(seeds))
+        if (valid_columns &&
+            identical(attr(seeds, "disease"), disease_term)) {
+            if (verbose) {
+                message(sprintf(
+                    "  [Open Targets] loaded %d seeds for '%s' from %s\n",
+                    nrow(seeds),
+                    disease_term,
+                    basename(candidate_file)
+                ))
+            }
+            return(seeds)
+        }
+    }
+    NULL
+}
+
+.query_open_targets_seeds <- function(efo_id, max_seeds, verbose) {
+    query <- "
+    query assoc($efoId: String!, $size: Int!) {
+        disease(efoId: $efoId) {
+            id
+            name
+            associatedTargets(page: {index: 0, size: $size}) {
+                count
+                rows {
+                    target { id approvedSymbol }
+                    score
+                }
+            }
+        }
+    }"
+    parsed <- .open_targets_request(
+        query,
+        list(efoId = efo_id, size = max_seeds),
+        "Open Targets association request"
+    )
+    disease <- parsed$data$disease
+    if (is.null(disease)) {
+        return(.empty_seed_table())
+    }
+    if (verbose) {
+        message(sprintf(
+            "  [Open Targets] matched '%s' (%s total associations)\n",
+            disease$name,
+            format(disease$associatedTargets$count)
+        ))
+    }
+
+    rows <- disease$associatedTargets$rows
+    if (is.null(rows) || length(rows) == 0L ||
+        is.null(rows$target) || nrow(rows$target) == 0L) {
+        return(.empty_seed_table())
+    }
+    seeds <- data.frame(
+        ensembl_id = rows$target$id,
+        symbol = rows$target$approvedSymbol,
+        score = rows$score,
+        stringsAsFactors = FALSE
+    )
+    attr(seeds, "resolved_name") <- disease$name
+    seeds
+}
+
+.filter_and_report_seeds <- function(seeds, min_score, verbose) {
+    n_returned <- nrow(seeds)
+    keep <- !is.na(seeds$score) & seeds$score >= min_score
+    seeds <- seeds[keep, , drop = FALSE]
+    seeds <- seeds[order(seeds$score, decreasing = TRUE), , drop = FALSE]
+    rownames(seeds) <- NULL
+
+    if (verbose) {
+        message(sprintf(
+            "  [Open Targets] %d targets returned, %d pass score >= %g\n",
+            n_returned,
+            nrow(seeds),
+            min_score
+        ))
+        if (nrow(seeds) > 0L) {
+            preview <- utils::head(seeds, 5L)
+            labels <- sprintf("%s(%.2f)", preview$symbol, preview$score)
+            message(sprintf(
+                "  [Open Targets] top seeds: %s\n",
+                paste(labels, collapse = ", ")
+            ))
+        }
+    }
+    seeds
+}
+
+.validate_seed_request <- function(disease_term, max_seeds, min_score) {
+    if (!is.character(disease_term) || length(disease_term) != 1L ||
+        is.na(disease_term) || !nzchar(disease_term)) {
+        stop("disease_term must be one non-empty character value")
+    }
+    if (!is.numeric(max_seeds) || length(max_seeds) != 1L ||
+        !is.finite(max_seeds) || max_seeds < 1 ||
+        max_seeds != as.integer(max_seeds)) {
+        stop("max_seeds must be one positive integer")
+    }
+    if (!is.numeric(min_score) || length(min_score) != 1L ||
+        !is.finite(min_score) || min_score < 0 || min_score > 1) {
+        stop("min_score must be one finite number in [0, 1]")
+    }
+    invisible(NULL)
+}
 
 #' Derive Disease Seed Genes from Open Targets
 #'
 #' Queries the Open Targets Platform for the top targets associated with a
-#' disease, ranked by overall association score. Results are frozen to the
-#' package cache keyed by (EFO ID, max_seeds, min_score) so the API is called
-#' at most once per parameter combination - subsequent runs load from disk and
-#' are fully reproducible offline.
+#' disease, ranked by overall association score. Results are stored in the
+#' package cache with the ontology identifier and query parameters. Cached
+#' results support repeated analyses without a new request.
 #'
 #' @param disease_term Disease name or EFO ID
 #' @param max_seeds Integer, take at most this many top-scoring targets
 #'   (default: 100)
 #' @param min_score Numeric, drop associations below this overall score
-#'   (default: 0.1). Applied after the top-N cut, so a disease with weak
-#'   associations yields fewer seeds rather than padding with noise.
+#'   (default: 0.1). Applied after the top-N query.
 #' @param use_cache Logical, read/write the frozen seed file (default: TRUE)
 #' @param force_refresh Logical, ignore any cached file and submit a new
 #'   request.
@@ -140,262 +295,430 @@ resolve_efo_id <- function(disease_term, verbose = FALSE) {
 #'     )
 #' }
 #' @export
-get_disease_seeds_opentargets <- function(disease_term,
-                                            max_seeds = 100,
-                                            min_score = 0.1,
-                                            use_cache = TRUE,
-                                            force_refresh = FALSE,
-                                            verbose = TRUE) {
-    if (!requireNamespace("httr", quietly = TRUE) ||
-        !requireNamespace("jsonlite", quietly = TRUE)) {
-        dependency_message <- paste(
-            "Network biology requires 'httr' and 'jsonlite'.",
-            "Install both packages before running this function."
-        )
-        stop(
-            dependency_message,
-            call. = FALSE
-        )
-    }
+get_disease_seeds_opentargets <- function(
+    disease_term,
+    max_seeds = 100,
+    min_score = 0.1,
+    use_cache = TRUE,
+    force_refresh = FALSE,
+    verbose = TRUE
+) {
+    .require_packages(c("httr", "jsonlite"), "Open Targets seed retrieval")
+    .validate_seed_request(disease_term, max_seeds, min_score)
 
-    # A frozen cache records the submitted disease term and resolved
-    # ontology identifier. Search those files before an online term-resolution
-    # request. This makes a previously fetched seed set reproducible offline.
-    if (use_cache && !force_refresh &&
-        !grepl("^(EFO|MONDO|HP|Orphanet|DOID)[:_]", disease_term)) {
-        seed_pattern <- sprintf(
-            "^ot_seeds_.*_n%d_s%s\\.rds$",
-            max_seeds, format(min_score, trim = TRUE)
+    if (use_cache && !force_refresh && !.is_ontology_id(disease_term)) {
+        cached <- .find_seed_cache(
+            disease_term, max_seeds, min_score, verbose
         )
-        cached_files <- list.files(get_cache_dir(),
-            pattern = seed_pattern,
-            full.names = TRUE
-        )
-        for (candidate_file in cached_files) {
-            cached_seeds <- tryCatch(readRDS(candidate_file),
-                error = function(e) NULL
-            )
-            if (!is.null(cached_seeds) &&
-                identical(attr(cached_seeds, "disease"), disease_term) &&
-                all(c("ensembl_id", "symbol", "score") %in%
-                    colnames(cached_seeds))) {
-                if (verbose) {
-                    cache_format <- paste(
-                        "  [Open Targets] loaded %d frozen seeds for",
-                        "'%s' from cache (%s)\n"
-                    )
-                    message(sprintf(
-                        cache_format,
-                        nrow(cached_seeds), disease_term,
-                        basename(candidate_file)
-                    ))
-                }
-                return(cached_seeds)
-            }
+        if (!is.null(cached)) {
+            return(cached)
         }
     }
 
-    # --- Resolve disease to EFO ID ---
-    if (verbose) {
-        message(sprintf(
-            "  [Open Targets] resolving disease term: '%s'\n",
-            disease_term
-        ))
-    }
     efo_id <- resolve_efo_id(disease_term, verbose = verbose)
-    if (verbose) {
-        message(sprintf("  [Open Targets] resolved to EFO ID: %s\n", efo_id))
+    cache_file <- .seed_cache_file(efo_id, max_seeds, min_score)
+    if (use_cache && !force_refresh) {
+        cached <- .read_cache_file(cache_file)
+        if (!is.null(cached)) {
+            return(cached)
+        }
     }
+
+    seeds <- .query_open_targets_seeds(efo_id, max_seeds, verbose)
+    query_name <- attr(seeds, "resolved_name")
+    seeds <- .filter_and_report_seeds(seeds, min_score, verbose)
+    attr(seeds, "efo_id") <- unname(efo_id)
+    attr(seeds, "disease") <- disease_term
     resolved_name <- attr(efo_id, "resolved_name")
-
-    # --- Cache key: frozen seed file ---
-    cache_file <- file.path(
-        get_cache_dir(),
-        sprintf(
-            "ot_seeds_%s_n%d_s%g.rds",
-            gsub("[^A-Za-z0-9]", "", efo_id), max_seeds, min_score
-        )
-    )
-
-    if (use_cache && !force_refresh && file.exists(cache_file)) {
-        cached_seeds <- readRDS(cache_file)
-        if (verbose) {
-            message(sprintf(
-                "  [Open Targets] loaded %d frozen seeds from cache (%s)\n",
-                nrow(cached_seeds), basename(cache_file)
-            ))
-        }
-        return(cached_seeds)
+    if (is.null(resolved_name)) {
+        resolved_name <- query_name
     }
-
-    # --- Query Open Targets for associated targets ---
-    if (verbose) {
-        message(sprintf(
-            "  [Open Targets] querying associated targets (top %d)...\n",
-            max_seeds
-        ))
-    }
-
-    endpoint <- "https://api.platform.opentargets.org/api/v4/graphql"
-    query <- "
-    query assoc($efoId: String!, $size: Int!) {
-        disease(efoId: $efoId) {
-        id
-        name
-        associatedTargets(page: {index: 0, size: $size}) {
-            count
-            rows {
-            target { id approvedSymbol }
-            score
-            }
-        }
-        }
-    }"
-
-    response <- tryCatch(
-        httr::POST(endpoint,
-            body = list(
-                query = query,
-                variables = list(
-                    efoId = efo_id,
-                    size = max_seeds
-                )
-            ),
-            encode = "json"
-        ),
-        error = function(e) NULL
-    )
-    if (is.null(response)) {
-        stop("Open Targets association request failed")
-    }
-
-    status <- httr::status_code(response)
-    if (verbose) message(sprintf("  [Open Targets] HTTP status: %d\n", status))
-    if (status != 200) {
-        stop(
-            sprintf(
-                "Open Targets association request returned HTTP %d",
-                status
-            ),
-            call. = FALSE
-        )
-    }
-
-    parsed <- tryCatch(
-        jsonlite::fromJSON(httr::content(response,
-            as = "text",
-            encoding = "UTF-8"
-        )),
-        error = function(e) NULL
-    )
-    if (is.null(parsed)) {
-        stop("Open Targets association response contained invalid JSON")
-    }
-
-    # Report GraphQL errors explicitly - the API returns HTTP 200 with an
-    # `errors` field when the query itself is malformed or the EFO is unknown.
-    if (!is.null(parsed$errors)) {
-        error_messages <- tryCatch(
-            paste(parsed$errors$message, collapse = "; "),
-            error = function(e) "unparseable error object"
-        )
-        stop(
-            sprintf(
-                "Open Targets rejected the association query: %s",
-                error_messages
-            ),
-            call. = FALSE
-        )
-    }
-
-    disease_name <- tryCatch(parsed$data$disease$name, error = function(e) NA)
-    total_assoc <- tryCatch(parsed$data$disease$associatedTargets$count,
-        error = function(e) NA
-    )
-    if (verbose && !is.na(disease_name)) {
-        message(sprintf(
-            "  [Open Targets] matched disease: '%s' (%s total associations)\n",
-            disease_name, format(total_assoc)
-        ))
-    }
-
-    rows <- parsed$data$disease$associatedTargets$rows
-    if (is.null(rows) || length(rows) == 0 ||
-        is.null(rows$target) || nrow(rows$target) == 0) {
-        warning(
-            sprintf("No associated targets were returned for %s", efo_id),
-            call. = FALSE
-        )
-        return(data.frame(
-            ensembl_id = character(0), symbol = character(0),
-            score = numeric(0), stringsAsFactors = FALSE
-        ))
-    }
-
-    seeds <- data.frame(
-        ensembl_id = rows$target$id,
-        symbol = rows$target$approvedSymbol,
-        score = rows$score,
-        stringsAsFactors = FALSE
-    )
-
-    n_before_filter <- nrow(seeds)
-
-    # Apply the soft minimum score (top-N already enforced by the query size).
-    keep <- !is.na(seeds$score) & seeds$score >= min_score
-    seeds <- seeds[keep, , drop = FALSE]
-    seeds <- seeds[order(seeds$score, decreasing = TRUE), , drop = FALSE]
-    rownames(seeds) <- NULL
-
-    if (verbose) {
-        message(sprintf(
-            "  [Open Targets] %d targets returned, %d pass score >= %g\n",
-            n_before_filter, nrow(seeds), min_score
-        ))
-        if (nrow(seeds) > 0) {
-            top_preview <- utils::head(seeds, 5)
-            message(sprintf(
-                "  [Open Targets] top seeds: %s\n",
-                paste(sprintf(
-                    "%s(%.2f)", top_preview$symbol,
-                    top_preview$score
-                ), collapse = ", ")
-            ))
-        }
-    }
-
-    # --- Freeze to cache ---
+    attr(seeds, "resolved_name") <- resolved_name
+    attr(seeds, "fetch_date") <- Sys.Date()
     if (use_cache) {
-        attr(seeds, "efo_id") <- efo_id
-        attr(seeds, "disease") <- disease_term
-        attr(seeds, "resolved_name") <- resolved_name
-        attr(seeds, "fetch_date") <- Sys.Date()
-        saveRDS(seeds, cache_file)
+        .write_cache_file(seeds, cache_file)
     }
-
     seeds
 }
 
+.initialize_string_db <- function(
+    string_version,
+    organism,
+    string_score_threshold,
+    string_cache_dir
+) {
+    tryCatch(
+        STRINGdb::STRINGdb$new(
+            version = string_version,
+            species = organism,
+            score_threshold = string_score_threshold,
+            input_directory = string_cache_dir
+        ),
+        error = function(e) NULL
+    )
+}
 
-# -----------------------------------------------------------------------------
-#  Network propagation (random walk with restart)
-# -----------------------------------------------------------------------------
+.read_offline_string <- function(
+    info_file,
+    edge_file,
+    string_score_threshold
+) {
+    protein_info <- utils::read.delim(
+        gzfile(info_file),
+        skip = 1L,
+        header = FALSE,
+        quote = "",
+        stringsAsFactors = FALSE,
+        col.names = c(
+            "STRING_id", "preferred_name", "protein_size", "annotation"
+        )
+    )
+    edge_table <- .read_cache_file(edge_file)
+    required_columns <- c("protein1", "protein2", "combined_score")
+    valid_edges <- !is.null(edge_table) &&
+        all(required_columns %in% colnames(edge_table)) &&
+        all(is.finite(edge_table$combined_score)) &&
+        all(edge_table$combined_score >= string_score_threshold)
+    if (!valid_edges) {
+        stop("The offline STRING edge cache failed validation")
+    }
+    list(
+        symbol_to_id = stats::setNames(
+            protein_info$STRING_id,
+            protein_info$preferred_name
+        ),
+        graph = igraph::graph_from_data_frame(
+            edge_table[, required_columns],
+            directed = FALSE
+        )
+    )
+}
+
+.load_offline_string <- function(
+    string_cache_dir,
+    organism,
+    string_version,
+    string_score_threshold
+) {
+    cache_key <- paste0(
+        "string_offline_", organism, "_v", string_version,
+        "_s", string_score_threshold
+    )
+    if (exists(cache_key, envir = .geneselectr2_cache)) {
+        return(get(cache_key, envir = .geneselectr2_cache))
+    }
+
+    info_file <- file.path(
+        string_cache_dir,
+        sprintf("%s.protein.info.v%s.txt.gz", organism, string_version)
+    )
+    edge_file <- file.path(
+        string_cache_dir,
+        sprintf(
+            "%s.protein.links.score%d.v%s.rds",
+            organism,
+            string_score_threshold,
+            string_version
+        )
+    )
+    if (!file.exists(info_file) || !file.exists(edge_file)) {
+        cache_error <- paste0(
+            "STRING initialization failed; the offline cache requires ",
+            "%s and %s"
+        )
+        stop(
+            sprintf(
+                cache_error,
+                basename(info_file),
+                basename(edge_file)
+            ),
+            call. = FALSE
+        )
+    }
+
+    resources <- .read_offline_string(
+        info_file,
+        edge_file,
+        string_score_threshold
+    )
+    assign(cache_key, resources, envir = .geneselectr2_cache)
+    resources
+}
+
+.prepare_string_resources <- function(
+    string_db,
+    all_symbols,
+    string_cache_dir,
+    organism,
+    string_version,
+    string_score_threshold,
+    verbose
+) {
+    if (is.null(string_db)) {
+        offline <- .load_offline_string(
+            string_cache_dir,
+            organism,
+            string_version,
+            string_score_threshold
+        )
+        mapped_ids <- unname(offline$symbol_to_id[all_symbols])
+        mapping <- data.frame(
+            gene = all_symbols[!is.na(mapped_ids)],
+            STRING_id = mapped_ids[!is.na(mapped_ids)],
+            stringsAsFactors = FALSE
+        )
+        if (verbose) {
+            message("  STRING API unavailable; using cached STRING files\n")
+        }
+        return(list(
+            mapping = mapping,
+            graph = offline$graph,
+            offline = TRUE
+        ))
+    }
+
+    mapping <- tryCatch(
+        string_db$map(
+            data.frame(gene = all_symbols, stringsAsFactors = FALSE),
+            "gene",
+            removeUnmappedRows = TRUE
+        ),
+        error = function(e) NULL
+    )
+    list(mapping = mapping, graph = NULL, offline = FALSE)
+}
+
+.load_string_graph <- function(
+    resources,
+    string_db,
+    string_cache_dir,
+    string_version,
+    organism,
+    string_score_threshold
+) {
+    if (resources$offline) {
+        return(resources$graph)
+    }
+    graph <- tryCatch(string_db$get_graph(), error = function(e) NULL)
+    if (!is.null(graph)) {
+        return(graph)
+    }
+
+    links <- list.files(
+        string_cache_dir,
+        pattern = "protein\\.links",
+        full.names = TRUE
+    )
+    if (length(links) > 0L) {
+        warning(
+            sprintf(
+                "Removing incomplete STRING files and retrying: %s",
+                paste(basename(links), collapse = ", ")
+            ),
+            call. = FALSE
+        )
+        unlink(links)
+    }
+    string_db <- .initialize_string_db(
+        string_version,
+        organism,
+        string_score_threshold,
+        string_cache_dir
+    )
+    if (is.null(string_db)) {
+        return(NULL)
+    }
+    tryCatch(string_db$get_graph(), error = function(e) NULL)
+}
+
+.prepare_restart_vector <- function(seeds, mapping, graph_nodes) {
+    score_by_symbol <- stats::setNames(seeds$score, seeds$symbol)
+    mapping_scores <- score_by_symbol[mapping$gene]
+    seed_scores <- stats::setNames(
+        mapping_scores[!is.na(mapping_scores)],
+        mapping$STRING_id[!is.na(mapping_scores)]
+    )
+    if (anyDuplicated(names(seed_scores))) {
+        seed_scores <- tapply(seed_scores, names(seed_scores), max)
+    }
+
+    present_ids <- intersect(names(seed_scores), graph_nodes)
+    weights <- seed_scores[present_ids]
+    valid <- is.finite(weights) & weights > 0
+    present_ids <- present_ids[valid]
+    weights <- weights[valid]
+    if (length(present_ids) == 0L || sum(weights) <= 0) {
+        return(NULL)
+    }
+
+    restart <- stats::setNames(rep(0, length(graph_nodes)), graph_nodes)
+    restart[present_ids] <- weights
+    restart <- restart / sum(restart)
+    if (any(!is.finite(restart))) {
+        return(NULL)
+    }
+    restart
+}
+
+.run_string_pagerank <- function(graph, restart_vector, restart_prob) {
+    edge_attributes <- igraph::edge_attr_names(graph)
+    weight_name <- intersect(
+        c("combined_score", "score", "weight"),
+        edge_attributes
+    )
+    graph_weights <- if (length(weight_name) == 0L) {
+        NULL
+    } else {
+        igraph::edge_attr(graph, weight_name[1])
+    }
+    if (!is.null(graph_weights) && any(!is.finite(graph_weights))) {
+        stop("STRING graph contains non-finite edge weights")
+    }
+    igraph::page_rank(
+        graph,
+        damping = 1 - restart_prob,
+        personalized = restart_vector[igraph::V(graph)$name],
+        weights = graph_weights
+    )$vector
+}
+
+.report_string_run <- function(
+    mapping,
+    all_symbols,
+    seeds,
+    graph,
+    restart_vector,
+    restart_prob
+) {
+    n_seed_mapped <- sum(mapping$gene %in% seeds$symbol)
+    message(sprintf(
+        "  STRING mapping: %d/%d symbols mapped, %d seeds mapped\n",
+        nrow(mapping),
+        length(all_symbols),
+        n_seed_mapped
+    ))
+    message(sprintf(
+        "  RWR on STRING: %d nodes, %d edges, %d seeds (restart=%.2f)\n",
+        igraph::vcount(graph),
+        igraph::ecount(graph),
+        sum(restart_vector > 0),
+        restart_prob
+    ))
+}
+
+.map_candidate_network_scores <- function(
+    genes,
+    mapping,
+    network_scores,
+    verbose
+) {
+    symbol_to_id <- stats::setNames(mapping$STRING_id, mapping$gene)
+    candidate_ids <- symbol_to_id[genes]
+    scores <- stats::setNames(rep(0, length(genes)), genes)
+    in_graph <- !is.na(candidate_ids) &
+        candidate_ids %in% names(network_scores)
+    scores[in_graph] <- network_scores[candidate_ids[in_graph]]
+    if (verbose) {
+        positive <- scores[scores > 0]
+        message(sprintf(
+            "  [network] %d/%d candidate genes scored; range [%.2e, %.2e]\n",
+            sum(in_graph),
+            length(genes),
+            if (length(positive)) min(positive) else 0,
+            if (length(positive)) max(positive) else 0
+        ))
+    }
+    scores
+}
+
+.prepare_string_context <- function(
+    genes,
+    seeds,
+    string_score_threshold,
+    organism,
+    string_version,
+    verbose
+) {
+    cache_dir <- getOption(
+        "GeneSelectR2.string_cache",
+        file.path(get_cache_dir(), "stringdb")
+    )
+    dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+    string_db <- .initialize_string_db(
+        string_version, organism, string_score_threshold, cache_dir
+    )
+    all_symbols <- unique(c(genes, seeds$symbol))
+    resources <- .prepare_string_resources(
+        string_db, all_symbols, cache_dir, organism,
+        string_version, string_score_threshold, verbose
+    )
+    if (is.null(resources$mapping) || nrow(resources$mapping) < 5L) {
+        stop("Fewer than five candidate or seed genes mapped to STRING")
+    }
+    graph <- .load_string_graph(
+        resources, string_db, cache_dir, string_version,
+        organism, string_score_threshold
+    )
+    if (is.null(graph) || igraph::vcount(graph) == 0L ||
+        igraph::ecount(graph) == 0L) {
+        stop("The complete STRING graph could not be loaded")
+    }
+    list(
+        mapping = resources$mapping,
+        all_symbols = all_symbols,
+        graph = igraph::simplify(graph, edge.attr.comb = "max")
+    )
+}
+
+.score_string_network <- function(
+    genes,
+    seeds,
+    string_score_threshold,
+    restart_prob,
+    organism,
+    string_version,
+    verbose
+) {
+    context <- .prepare_string_context(
+        genes, seeds, string_score_threshold,
+        organism, string_version, verbose
+    )
+    graph <- context$graph
+    mapping <- context$mapping
+    restart <- .prepare_restart_vector(seeds, mapping, igraph::V(graph)$name)
+    if (is.null(restart)) {
+        warning(
+            "No finite, positive seed weights map into the STRING graph",
+            call. = FALSE
+        )
+        return(stats::setNames(rep(0, length(genes)), genes))
+    }
+    if (verbose) {
+        .report_string_run(
+            mapping, context$all_symbols, seeds, graph, restart, restart_prob
+        )
+    }
+
+    network_scores <- .run_string_pagerank(graph, restart, restart_prob)
+    raw_scores <- .map_candidate_network_scores(
+        genes, mapping, network_scores, verbose
+    )
+    percentile01(raw_scores)
+}
 
 #' Score Genes by Network Proximity to Disease Seeds
 #'
-#' Places the disease seed genes on the STRING functional interaction network
-#' and propagates relevance via random walk with restart (RWR). Each candidate
-#' gene receives a score equal to its stationary RWR probability - high for
-#' genes that are seeds themselves or sit close to many seeds in the network,
-#' low for genes far from disease biology.
+#' Places disease seed genes on the STRING functional interaction network and
+#' propagates their Open Targets association scores with a random walk with
+#' restart. Each candidate gene receives its stationary probability from the
+#' network propagation.
 #'
 #' @param genes Character vector of candidate gene symbols to score
 #' @param disease_term Disease name or EFO ID (passed to Open Targets)
 #' @param string_score_threshold Integer, minimum STRING combined score for an
 #'   edge to be included (default: 400, STRING's "medium confidence")
 #' @param restart_prob Numeric, RWR restart probability (default: 0.5). Higher
-#'   retains more probability near the seeds; lower values allow wider
-#'   propagation.
+#'   values retain more probability near the seeds.
 #' @param max_seeds,min_score Passed to \code{get_disease_seeds_opentargets}
 #' @param organism STRING species id (default: 9606, human)
 #' @param string_version STRING version (default: "12.0")
@@ -411,349 +734,46 @@ get_disease_seeds_opentargets <- function(disease_term,
 #'     )
 #' }
 #' @export
-score_network_layer <- function(genes,
-                                disease_term,
-                                string_score_threshold = 400,
-                                restart_prob = 0.5,
-                                max_seeds = 100,
-                                min_score = 0.1,
-                                organism = 9606,
-                                string_version = "12.0",
-                                use_cache = TRUE,
-                                verbose = TRUE) {
-    if (!requireNamespace("STRINGdb", quietly = TRUE)) {
-        stop(
-            "Network biology requires 'STRINGdb'. ",
-            "Install with: BiocManager::install('STRINGdb')"
-        )
+score_network_layer <- function(
+    genes,
+    disease_term,
+    string_score_threshold = 400,
+    restart_prob = 0.5,
+    max_seeds = 100,
+    min_score = 0.1,
+    organism = 9606,
+    string_version = "12.0",
+    use_cache = TRUE,
+    verbose = TRUE
+) {
+    .require_packages(c("STRINGdb", "igraph"), "Network biology")
+    if (!is.character(genes) || length(genes) == 0L || anyNA(genes)) {
+        stop("genes must be a non-empty character vector")
     }
-    if (!requireNamespace("igraph", quietly = TRUE)) {
-        stop(
-            "Network biology requires 'igraph'. ",
-            "Install with: install.packages('igraph')"
-        )
+    if (!is.numeric(restart_prob) || length(restart_prob) != 1L ||
+        !is.finite(restart_prob) || restart_prob <= 0 || restart_prob >= 1) {
+        stop("restart_prob must be one finite number in (0, 1)")
     }
 
-    n_genes <- length(genes)
-    zero_scored <- stats::setNames(rep(0, n_genes), genes)
-
-    # --- 1. Disease seeds from Open Targets ---
     seeds <- get_disease_seeds_opentargets(
         disease_term,
-        max_seeds = max_seeds, min_score = min_score,
-        use_cache = use_cache, verbose = verbose
+        max_seeds = max_seeds,
+        min_score = min_score,
+        use_cache = use_cache,
+        verbose = verbose
     )
-    if (nrow(seeds) == 0) {
-        warning("No disease seeds available; network layer returns zeros.")
-        return(zero_scored)
+    if (nrow(seeds) == 0L) {
+        warning("No disease seeds are available; returning zero scores")
+        return(stats::setNames(rep(0, length(genes)), genes))
     }
-
-    # --- 2. Build STRING network over the union of seeds + candidate genes ---
-    if (verbose) message("  Building STRING network...\n")
-
-    # STRING reference files are large. Store them in a persistent directory
-    # and allow enough time for the initial download.
-    string_cache_dir <- getOption(
-        "GeneSelectR2.string_cache",
-        file.path(path.expand("~"), ".cache", "GeneSelectR2", "stringdb")
-    )
-    dir.create(string_cache_dir, recursive = TRUE, showWarnings = FALSE)
 
     previous_timeout <- getOption("timeout")
     if (is.numeric(previous_timeout) && previous_timeout < 3600) {
         options(timeout = 3600)
         on.exit(options(timeout = previous_timeout), add = TRUE)
     }
-
-    string_db <- tryCatch(
-        STRINGdb::STRINGdb$new(
-            version = string_version,
-            species = organism,
-            score_threshold = string_score_threshold,
-            input_directory = string_cache_dir
-        ),
-        error = function(e) NULL
+    .score_string_network(
+        genes, seeds, string_score_threshold, restart_prob,
+        organism, string_version, verbose
     )
-    all_symbols <- unique(c(genes, seeds$symbol))
-
-    # STRINGdb validates its version through an API request even when every
-    # reference file is present locally. A frozen, score-filtered edge cache and
-    # the official protein-info table provide an equivalent offline path when
-    # that request is unavailable.
-    using_offline_string <- is.null(string_db)
-    if (using_offline_string) {
-        offline_key <- paste0(
-            "string_offline_", organism, "_v", string_version,
-            "_s", string_score_threshold
-        )
-        offline_resources <- if (
-            exists(offline_key, envir = .geneselectr2_cache)
-        ) {
-            get(offline_key, envir = .geneselectr2_cache)
-        } else {
-            info_file <- file.path(
-                string_cache_dir,
-                sprintf("%s.protein.info.v%s.txt.gz", organism, string_version)
-            )
-            edge_file <- file.path(
-                string_cache_dir,
-                sprintf(
-                    "%s.protein.links.score%d.v%s.rds", organism,
-                    string_score_threshold, string_version
-                )
-            )
-            if (!file.exists(info_file) || !file.exists(edge_file)) {
-                cache_message <- paste(
-                    "STRING initialization failed and the offline cache",
-                    "is incomplete. Required files: %s and %s"
-                )
-                stop(
-                    sprintf(
-                        cache_message,
-                        basename(info_file), basename(edge_file)
-                    ),
-                    call. = FALSE
-                )
-            }
-            protein_info <- utils::read.delim(
-                gzfile(info_file),
-                skip = 1L, header = FALSE, quote = "",
-                stringsAsFactors = FALSE,
-                col.names = c(
-                    "STRING_id", "preferred_name", "protein_size",
-                    "annotation"
-                )
-            )
-            edge_table <- readRDS(edge_file)
-            required_edge_columns <- c("protein1", "protein2", "combined_score")
-            if (!all(required_edge_columns %in% colnames(edge_table)) ||
-                any(!is.finite(edge_table$combined_score)) ||
-                any(edge_table$combined_score < string_score_threshold)) {
-                stop("The offline STRING edge cache failed validation.")
-            }
-            offline_graph <- igraph::graph_from_data_frame(
-                edge_table[, required_edge_columns],
-                directed = FALSE
-            )
-            resources <- list(
-                symbol_to_id = stats::setNames(
-                    protein_info$STRING_id,
-                    protein_info$preferred_name
-                ),
-                graph = offline_graph
-            )
-            assign(offline_key, resources, envir = .geneselectr2_cache)
-            resources
-        }
-        mapped_ids <- unname(offline_resources$symbol_to_id[all_symbols])
-        mapping <- data.frame(
-            gene = all_symbols[!is.na(mapped_ids)],
-            STRING_id = mapped_ids[!is.na(mapped_ids)],
-            stringsAsFactors = FALSE
-        )
-        g <- offline_resources$graph
-        if (verbose) {
-            message("  STRING API unavailable; using frozen local v12 files\n")
-        }
-    } else {
-        mapping <- tryCatch(
-            string_db$map(
-                data.frame(gene = all_symbols, stringsAsFactors = FALSE),
-                "gene",
-                removeUnmappedRows = TRUE
-            ),
-            error = function(e) NULL
-        )
-    }
-    if (is.null(mapping) || nrow(mapping) < 5) {
-        stop("Fewer than five candidate or seed genes mapped to STRING")
-    }
-
-    if (verbose) {
-        n_seed_mapped <- sum(mapping$gene %in% seeds$symbol)
-        message(sprintf(
-            "  STRING mapping: %d/%d symbols mapped, %d seeds mapped\n",
-            nrow(mapping), length(all_symbols), n_seed_mapped
-        ))
-    }
-
-    # Load the complete STRING network. PageRank on an induced candidate/seed
-    # subgraph excludes intermediate proteins and makes proximity depend on the
-    # candidate pool. The full graph retains all paths allowed by the configured
-    # STRING score threshold.
-    pull_graph <- function() {
-        tryCatch(string_db$get_graph(), error = function(e) NULL)
-    }
-    if (!using_offline_string) g <- pull_graph()
-
-    # A truncated links file in the cache produces NA edges here. That is a
-    # corrupt download, not an absence of interactions, so delete the fragment
-    # and try once more before giving up.
-    if (is.null(g) && !using_offline_string) {
-        links <- list.files(string_cache_dir,
-            pattern = "protein\\.links",
-            full.names = TRUE
-        )
-        if (length(links) > 0) {
-            warning(
-                sprintf(
-                    "Removing incomplete STRING files and retrying: %s",
-                    paste(basename(links), collapse = ", ")
-                ),
-                call. = FALSE
-            )
-            unlink(links)
-            string_db <- tryCatch(
-                STRINGdb::STRINGdb$new(
-                    version = string_version, species = organism,
-                    score_threshold = string_score_threshold,
-                    input_directory = string_cache_dir
-                ),
-                error = function(e) NULL
-            )
-            if (!is.null(string_db)) g <- pull_graph()
-        }
-    }
-    if (is.null(g) || igraph::vcount(g) == 0 || igraph::ecount(g) == 0) {
-        stop("The complete STRING graph could not be loaded")
-    }
-
-    # --- 3. Run random walk with restart on the complete graph ---
-    g <- igraph::simplify(g, edge.attr.comb = "max")
-
-    graph_nodes <- igraph::V(g)$name
-
-    # Give each seed probability in proportion to its disease-association score.
-    # to its Open Targets association score.
-    #
-    # Map symbols to STRING identifiers while keeping scores aligned.
-    seed_score_by_symbol <- stats::setNames(seeds$score, seeds$symbol)
-
-    # The mapping contains one row per symbol and STRING identifier.
-    mapping_scores <- seed_score_by_symbol[mapping$gene]
-    is_seed_row <- !is.na(mapping_scores)
-
-    seed_scores_by_id <- stats::setNames(
-        mapping_scores[is_seed_row],
-        mapping$STRING_id[is_seed_row]
-    )
-
-    # Collapse duplicate STRING ids (several symbols can map to one id) by max.
-    if (any(duplicated(names(seed_scores_by_id)))) {
-        seed_scores_by_id <- tapply(
-            seed_scores_by_id,
-            names(seed_scores_by_id), max
-        )
-    }
-
-    restart_vector <- stats::setNames(rep(0, length(graph_nodes)), graph_nodes)
-    present_seeds <- intersect(names(seed_scores_by_id), graph_nodes)
-    if (length(present_seeds) == 0) {
-        warning("No seed genes present in the STRING graph; returning zeros.")
-        return(zero_scored)
-    }
-
-    # Seed scores can contain NA (a mapped STRING id whose symbol didn't match
-    # back to the seed table) or zeros. Either would make the normalised restart
-    # vector contain NA/NaN, which igraph's PageRank rejects outright. Keep only
-    # finite, positive seed weights.
-    seed_weights <- seed_scores_by_id[present_seeds]
-    valid <- is.finite(seed_weights) & seed_weights > 0
-    present_seeds <- present_seeds[valid]
-    seed_weights <- seed_weights[valid]
-
-    if (length(present_seeds) == 0 || sum(seed_weights) <= 0) {
-        seed_message <- paste(
-            "No finite, positive seed weights map into the graph;",
-            "returning zeros."
-        )
-        warning(
-            seed_message,
-            call. = FALSE
-        )
-        return(zero_scored)
-    }
-
-    restart_vector[present_seeds] <- seed_weights
-    restart_vector <- restart_vector / sum(restart_vector)
-
-    # Final guard: personalization must be all-finite and sum to 1.
-    if (any(!is.finite(restart_vector))) {
-        restart_message <- paste(
-            "The restart vector contains non-finite values after",
-            "normalisation; returning zeros."
-        )
-        warning(
-            restart_message,
-            call. = FALSE
-        )
-        return(zero_scored)
-    }
-
-    if (verbose) {
-        graph_format <- paste(
-            "  RWR on complete STRING graph: %d nodes, %d edges,",
-            "%d seeds (restart=%.2f)\n"
-        )
-        message(sprintf(
-            graph_format,
-            length(graph_nodes), igraph::ecount(g),
-            length(present_seeds), restart_prob
-        ))
-    }
-
-    # Random walk with restart via igraph's personalized PageRank, which is
-    # exactly RWR with the personalization vector as the restart distribution.
-    edge_attributes <- igraph::edge_attr_names(g)
-    weight_name <- intersect(
-        c("combined_score", "score", "weight"),
-        edge_attributes
-    )[1]
-    graph_weights <- if (is.na(weight_name)) {
-        NULL
-    } else {
-        igraph::edge_attr(g, weight_name)
-    }
-    if (!is.null(graph_weights) && any(!is.finite(graph_weights))) {
-        stop("STRING graph contains non-finite edge weights")
-    }
-
-    rwr <- igraph::page_rank(
-        g,
-        damping = 1 - restart_prob,
-        personalized = restart_vector[graph_nodes],
-        weights = graph_weights
-    )$vector
-
-    # --- 4. Map RWR scores back to candidate gene symbols ---
-    # Each candidate symbol -> its STRING id -> its RWR score.
-    symbol_to_id <- stats::setNames(mapping$STRING_id, mapping$gene)
-    candidate_ids <- symbol_to_id[genes]
-
-    raw_scores <- rep(0, n_genes)
-    in_graph <- !is.na(candidate_ids) & candidate_ids %in% names(rwr)
-    raw_scores[in_graph] <- rwr[candidate_ids[in_graph]]
-    names(raw_scores) <- genes
-
-    if (verbose) {
-        nonzero <- raw_scores[raw_scores > 0]
-        score_format <- paste(
-            "  [network] %d/%d candidate genes scored;",
-            "RWR score range [%.2e, %.2e]\n"
-        )
-        message(sprintf(
-            score_format,
-            sum(in_graph), n_genes,
-            if (length(nonzero)) min(nonzero) else 0,
-            if (length(nonzero)) max(nonzero) else 0
-        ))
-        if (length(unique(round(nonzero, 10))) <= 1 && length(nonzero) > 1) {
-            message(
-                "  [network] All scores are identical; RWR may be degenerate\n"
-            )
-        }
-    }
-
-    # Percentile-normalise to [0,1] for combination with the MPO framework.
-    percentile01(raw_scores)
 }

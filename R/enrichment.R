@@ -1,13 +1,155 @@
-# Gene Ontology semantic similarity, enrichment and MSigDB membership helpers.
+## Gene Ontology semantic similarity, enrichment, and MSigDB membership.
+
+.validate_biological_inputs <- function(
+    genes,
+    mode,
+    ontology,
+    sim_method,
+    enrich_fdr,
+    min_term_freq,
+    max_enriched_terms,
+    n_top_sims,
+    ic_quantile
+) {
+    if (!is.character(genes) || length(genes) == 0L || anyNA(genes)) {
+        stop(
+            "genes must be a non-empty character vector without missing values"
+        )
+    }
+    mode <- match.arg(mode, c("supervised", "data_driven"))
+    ontology <- match.arg(ontology, c("BP", "MF", "CC"), several.ok = TRUE)
+    sim_method <- match.arg(sim_method, c("resnik", "lin", "jiang", "rel"))
+    .validate_range(enrich_fdr, "enrich_fdr", 0, 1, lower_open = TRUE)
+    .validate_range(ic_quantile, "ic_quantile", 0, 1, upper_open = TRUE)
+    .validate_positive(n_top_sims, "n_top_sims")
+    .validate_positive(max_enriched_terms, "max_enriched_terms")
+    if (!is.null(min_term_freq)) {
+        .validate_positive(min_term_freq, "min_term_freq")
+    }
+    list(mode = mode, ontology = ontology, sim_method = sim_method)
+}
+
+.validate_positive <- function(value, name) {
+    if (!is.numeric(value) || length(value) != 1L ||
+        !is.finite(value) || value < 1) {
+        stop(name, " must be one positive number", call. = FALSE)
+    }
+}
+
+.validate_range <- function(
+    value,
+    name,
+    lower,
+    upper,
+    lower_open = FALSE,
+    upper_open = FALSE
+) {
+    if (!is.numeric(value) || length(value) != 1L || !is.finite(value)) {
+        stop(name, " must be one finite number", call. = FALSE)
+    }
+    lower_invalid <- if (lower_open) value <= lower else value < lower
+    upper_invalid <- if (upper_open) value >= upper else value > upper
+    if (lower_invalid || upper_invalid) {
+        interval <- sprintf(
+            "%s%s, %s%s",
+            if (lower_open) "(" else "[",
+            lower,
+            upper,
+            if (upper_open) ")" else "]"
+        )
+        stop(name, " must be one finite number in ", interval, call. = FALSE)
+    }
+}
+
+.prepare_biological_resources <- function(
+    genes,
+    go_cache,
+    ontology,
+    organism,
+    use_cache
+) {
+    if (is.null(go_cache)) {
+        go_cache <- if (use_cache) {
+            load_go_cache(organism = organism)
+        } else {
+            download_go_annotations(organism)
+        }
+    }
+    annotated <- intersect(genes, names(go_cache))
+    if (length(annotated) == 0L) {
+        warning(
+            "No GO annotations were found; returning zero evidence scores",
+            call. = FALSE
+        )
+        return(NULL)
+    }
+    if (length(annotated) < length(genes) * 0.5) {
+        warning(sprintf(
+            "Only %.1f%% of genes have GO annotations (%d/%d)",
+            100 * length(annotated) / length(genes),
+            length(annotated),
+            length(genes)
+        ))
+    }
+    go_cache <- filter_go_cache_by_ontology(go_cache, ontology)
+    if (!any(genes %in% names(go_cache))) {
+        warning(sprintf(
+            "No genes have GO annotations in ontology [%s]",
+            paste(ontology, collapse = ", ")
+        ))
+        return(NULL)
+    }
+    list(
+        go_cache = go_cache,
+        ic_scores = compute_information_content(go_cache),
+        ancestor_map = load_ancestor_map(organism, use_cache),
+        similarity_cache = create_similarity_cache()
+    )
+}
+
+.compute_biological_scores <- function(
+    genes,
+    target_terms,
+    enrichment_genes,
+    mode,
+    resources,
+    settings
+) {
+    if (mode == "supervised") {
+        return(compute_supervised_scores(
+            genes = genes,
+            target_terms = target_terms,
+            go_cache = resources$go_cache,
+            ic_scores = resources$ic_scores,
+            similarity_cache = resources$similarity_cache,
+            ancestor_map = resources$ancestor_map,
+            sim_method = settings$sim_method,
+            n_top_sims = settings$n_top_sims
+        ))
+    }
+    compute_data_driven_scores(
+        genes = genes,
+        enrichment_genes = enrichment_genes,
+        go_cache = resources$go_cache,
+        ic_scores = resources$ic_scores,
+        similarity_cache = resources$similarity_cache,
+        ancestor_map = resources$ancestor_map,
+        sim_method = settings$sim_method,
+        enrich_fdr = settings$enrich_fdr,
+        min_term_freq = settings$min_term_freq,
+        max_enriched_terms = settings$max_enriched_terms,
+        n_top_sims = settings$n_top_sims,
+        ic_quantile = settings$ic_quantile
+    )
+}
 
 
 #' Compute Biological Relevance Scores
 #'
-#' Scores genes based on GO semantic similarity to target terms (supervised)
-#' or auto-detected enriched terms (data-driven). Fully customizable: ontology
-#' selection, similarity metric, enrichment parameters, and aggregation.
+#' Scores genes by GO semantic similarity to specified target terms or to terms
+#' identified by an enrichment analysis.
 #'
-#' @param genes Character vector of gene symbols (genes to SCORE)
+#' @param genes Character vector of gene symbols to score.
 #' @param mode "supervised" or "data_driven"
 #' @param target_terms GO term IDs for supervised mode (e.g., "GO:0006955")
 #' @param ontology Character vector of GO ontologies to use. Any subset of
@@ -19,9 +161,8 @@
 #' @param max_enriched_terms Maximum number of enriched terms used as targets.
 #' @param n_top_sims Top-k similarities to average per gene.
 #' @param ic_quantile Specificity filter quantile for IC.
-#' @param enrichment_genes Character vector of gene symbols used ONLY to
-#'   discover enriched GO terms in data-driven mode. The default is `genes`.
-#'   This lets you learn targets from a candidate subset but score all genes.
+#' @param enrichment_genes Character vector of gene symbols used to identify
+#'   enriched GO terms in data-driven mode. The default is `genes`.
 #' @param go_cache Pre-loaded GO cache (gene -> GO terms). If NULL, loaded.
 #' @param use_cache Use disk/memory caching.
 #' @param organism Organism name.
@@ -55,118 +196,41 @@ biological_scorer <- function(
     use_cache = TRUE,
     organism = "human"
 ) {
-    # --- Validate parameters ---
-    ontology <- match.arg(ontology, c("BP", "MF", "CC"), several.ok = TRUE)
-    sim_method <- match.arg(sim_method, c("resnik", "lin", "jiang", "rel"))
-    stopifnot(is.numeric(enrich_fdr), enrich_fdr > 0, enrich_fdr <= 1)
-    stopifnot(is.numeric(n_top_sims), n_top_sims >= 1)
-    stopifnot(is.numeric(ic_quantile), ic_quantile >= 0, ic_quantile < 1)
-    stopifnot(is.numeric(max_enriched_terms), max_enriched_terms >= 1)
-    if (!is.null(min_term_freq)) {
-        stopifnot(is.numeric(min_term_freq), min_term_freq >= 1)
-    }
-
-    # if not provided, discover targets from the same set you score
-    if (is.null(enrichment_genes)) enrichment_genes <- genes
-
-    # --- Load GO annotations ---
-    if (is.null(go_cache)) {
-        if (use_cache) {
-            go_cache <- load_go_cache(organism = organism)
-        } else {
-            go_cache <- download_go_annotations(organism)
-        }
-    }
-
-    annotated_genes <- intersect(genes, names(go_cache))
-
-    if (length(annotated_genes) == 0) {
-        warning(
-            "No GO annotations were found; returning zero evidence scores",
-            call. = FALSE
-        )
-        return(rep(0, length(genes)))
-    }
-
-    if (length(annotated_genes) < length(genes) * 0.5) {
-        warning(sprintf(
-            "Only %.1f%% of genes have GO annotations (%d/%d)",
-            100 * length(annotated_genes) / length(genes),
-            length(annotated_genes),
-            length(genes)
-        ))
-    }
-
-    # --- Filter GO cache to selected ontologies ---
-    go_cache_filtered <- filter_go_cache_by_ontology(go_cache, ontology)
-
-    # Recheck after filtering (for scoring genes)
-    annotated_after <- intersect(genes, names(go_cache_filtered))
-    if (length(annotated_after) == 0) {
-        warning(sprintf(
-            paste(
-                "No genes have GO annotations in ontology [%s];",
-                "returning zero evidence scores"
-            ),
-            paste(ontology, collapse = ", ")
-        ))
-        return(rep(0, length(genes)))
-    }
-
-    # --- Compute IC from the ontology-filtered annotations ---
-    ic_scores <- compute_information_content(go_cache_filtered)
-
-    # --- Load ancestor map and create similarity cache ---
-    ancestor_map <- load_ancestor_map(
-        organism = organism,
-        use_cache = use_cache
+    validated <- .validate_biological_inputs(
+        genes, mode, ontology, sim_method, enrich_fdr,
+        min_term_freq, max_enriched_terms, n_top_sims, ic_quantile
     )
-    similarity_cache <- create_similarity_cache()
-
-    # --- Dispatch to scoring mode ---
-    if (mode == "supervised") {
-        if (is.null(target_terms) || length(target_terms) == 0) {
-            stop("target_terms required for supervised mode")
-        }
-
-        scores <- compute_supervised_scores(
-            genes = genes,
-            target_terms = target_terms,
-            go_cache = go_cache_filtered,
-            ic_scores = ic_scores,
-            similarity_cache = similarity_cache,
-            ancestor_map = ancestor_map,
-            sim_method = sim_method,
-            n_top_sims = n_top_sims
-        )
-    } else if (mode == "data_driven") {
-        scores <- compute_data_driven_scores(
-            genes = genes, # SCORE these
-            enrichment_genes = enrichment_genes, # DISCOVER targets from these
-            go_cache = go_cache_filtered,
-            ic_scores = ic_scores,
-            similarity_cache = similarity_cache,
-            ancestor_map = ancestor_map,
-            sim_method = sim_method,
-            enrich_fdr = enrich_fdr,
-            min_term_freq = min_term_freq,
-            max_enriched_terms = max_enriched_terms,
-            n_top_sims = n_top_sims,
-            ic_quantile = ic_quantile
-        )
-    } else {
-        stop("mode must be 'supervised' or 'data_driven'")
+    mode <- validated$mode
+    ontology <- validated$ontology
+    sim_method <- validated$sim_method
+    if (mode == "supervised" &&
+        (is.null(target_terms) || length(target_terms) == 0L)) {
+        stop("target_terms required for supervised mode")
+    }
+    if (is.null(enrichment_genes)) {
+        enrichment_genes <- genes
+    }
+    resources <- .prepare_biological_resources(
+        genes, go_cache, ontology, organism, use_cache
+    )
+    if (is.null(resources)) {
+        return(rep(0, length(genes)))
     }
 
-    # Percentile-normalize to [0, 1]
-    scores <- percentile01(scores)
-    return(scores)
+    settings <- list(
+        sim_method = sim_method,
+        enrich_fdr = enrich_fdr,
+        min_term_freq = min_term_freq,
+        max_enriched_terms = max_enriched_terms,
+        n_top_sims = n_top_sims,
+        ic_quantile = ic_quantile
+    )
+    scores <- .compute_biological_scores(
+        genes, target_terms, enrichment_genes, mode, resources, settings
+    )
+    percentile01(scores)
 }
 
-
-# =============================================================================
-# ONTOLOGY FILTERING
-# =============================================================================
 
 #' Filter GO Cache by Ontology
 #'
@@ -175,13 +239,11 @@ biological_scorer <- function(
 #'
 #' @param go_cache Named list of gene -> GO terms
 #' @param ontology Character vector of ontologies to keep ("BP", "MF", "CC")
-#' @importFrom AnnotationDbi select
 #' @return Filtered go_cache (genes with zero remaining terms are dropped)
 #' @keywords internal
 filter_go_cache_by_ontology <- function(go_cache, ontology = "BP") {
     if (length(ontology) == 3 &&
         all(c("BP", "MF", "CC") %in% ontology)) {
-        # All ontologies selected - no filtering needed
         return(go_cache)
     }
 
@@ -192,13 +254,11 @@ filter_go_cache_by_ontology <- function(go_cache, ontology = "BP") {
         )
     }
 
-    # Get all unique terms across all genes
     all_terms <- unique(unlist(go_cache))
     if (length(all_terms) == 0) {
         return(go_cache)
     }
 
-    # Look up ontology for each term
     tryCatch(
         {
             term_info <- AnnotationDbi::select(
@@ -209,12 +269,10 @@ filter_go_cache_by_ontology <- function(go_cache, ontology = "BP") {
             )
             keep_terms <- term_info$GOID[term_info$ONTOLOGY %in% ontology]
 
-            # Filter each gene's terms
             go_cache_out <- lapply(go_cache, function(terms) {
                 intersect(terms, keep_terms)
             })
 
-            # Remove genes with no remaining terms
             go_cache_out <- go_cache_out[lengths(go_cache_out) > 0]
 
             if (getOption("geneselectr2.verbose", FALSE)) {
@@ -231,19 +289,15 @@ filter_go_cache_by_ontology <- function(go_cache, ontology = "BP") {
 
             return(go_cache_out)
         },
-        error = function(e) {
-        stop(
-            sprintf("GO.db ontology lookup failed: %s", conditionMessage(e)),
-            call. = FALSE
-        )
+        error = function(error) {
+            stop(
+                "GO.db ontology lookup failed: ", conditionMessage(error),
+                call. = FALSE
+            )
         }
     )
 }
 
-
-# =============================================================================
-# SCORING FUNCTIONS
-# =============================================================================
 
 #' Compute Supervised Scores
 #'
@@ -272,32 +326,157 @@ compute_supervised_scores <- function(genes, target_terms, go_cache, ic_scores,
         gene_terms <- go_cache[[gene]]
 
         if (is.null(gene_terms) || length(gene_terms) == 0) {
-            scores[i] <- 0
             next
         }
-
-        # Compute all pairwise similarities between gene's terms and targets
-        all_sims <- numeric(0)
-        for (gene_term in gene_terms) {
-            for (target_term in target_terms) {
-                sim <- get_or_compute_similarity(
-                    gene_term, target_term, ic_scores, similarity_cache,
-                    ancestor_map, sim_method
-                )
-                all_sims <- c(all_sims, sim)
-            }
-        }
-
-        if (length(all_sims) == 0) {
-            scores[i] <- 0
-        } else {
-            all_sims <- sort(all_sims, decreasing = TRUE)
-            top_k <- min(n_top_sims, length(all_sims))
-            scores[i] <- mean(all_sims[seq_len(top_k)])
-        }
+        scores[i] <- .mean_top_similarity(
+            gene_terms, target_terms, ic_scores, similarity_cache,
+            ancestor_map, sim_method, n_top_sims
+        )
     }
 
     return(scores)
+}
+
+.mean_top_similarity <- function(
+    source_terms,
+    target_terms,
+    ic_scores,
+    similarity_cache,
+    ancestor_map,
+    sim_method,
+    n_top_sims
+) {
+    if (length(source_terms) == 0L || length(target_terms) == 0L) {
+        return(0)
+    }
+    similarities <- numeric(length(source_terms) * length(target_terms))
+    similarity_index <- 1L
+    for (source_term in source_terms) {
+        for (target_term in target_terms) {
+            similarities[similarity_index] <- get_or_compute_similarity(
+                source_term, target_term, ic_scores, similarity_cache,
+                ancestor_map, sim_method
+            )
+            similarity_index <- similarity_index + 1L
+        }
+    }
+    similarities <- sort(similarities, decreasing = TRUE)
+    mean(utils::head(similarities, n_top_sims))
+}
+
+.specific_go_annotations <- function(
+    enrichment_genes,
+    go_cache,
+    ic_scores,
+    ic_quantile
+) {
+    enrichment_genes <- intersect(enrichment_genes, names(go_cache))
+    if (length(enrichment_genes) < 10L) {
+        warning(
+            "Fewer than 10 enrichment genes are annotated; returning zeros",
+            call. = FALSE
+        )
+        return(NULL)
+    }
+    all_terms <- unique(unlist(go_cache[enrichment_genes]))
+    if (length(all_terms) == 0L) {
+        warning(
+            "No enrichment genes remain after the ontology filter",
+            call. = FALSE
+        )
+        return(NULL)
+    }
+    available_ic <- ic_scores[names(ic_scores) %in% all_terms]
+    if (length(available_ic) > 0L && ic_quantile > 0) {
+        threshold <- stats::quantile(
+            available_ic, probs = ic_quantile, na.rm = TRUE
+        )
+        specific_terms <- names(available_ic[available_ic >= threshold])
+        go_cache <- lapply(
+            go_cache,
+            function(terms) intersect(terms, specific_terms)
+        )
+        go_cache <- go_cache[lengths(go_cache) > 0L]
+    }
+    annotated_genes <- intersect(enrichment_genes, names(go_cache))
+    if (length(annotated_genes) < 10L) {
+        warning(
+            "Fewer than 10 enrichment genes pass the specificity filter",
+            call. = FALSE
+        )
+        return(NULL)
+    }
+    list(go_cache = go_cache, annotated_genes = annotated_genes)
+}
+
+.select_data_driven_terms <- function(
+    annotated_genes,
+    go_cache,
+    min_term_freq,
+    enrich_fdr,
+    max_enriched_terms
+) {
+    term_counts <- table(unlist(go_cache[annotated_genes]))
+    minimum_frequency <- if (is.null(min_term_freq)) {
+        max(5, ceiling(0.01 * length(annotated_genes)))
+    } else {
+        min_term_freq
+    }
+    target_terms <- names(term_counts[term_counts >= minimum_frequency])
+    if (length(target_terms) == 0L) {
+        keep <- seq_len(min(20L, length(term_counts)))
+        target_terms <- names(sort(term_counts, decreasing = TRUE))[keep]
+    }
+
+    background <- setdiff(names(go_cache), annotated_genes)
+    if (length(annotated_genes) >= 30L && length(background) >= 50L) {
+        enrichment <- test_go_enrichment(
+            selected_genes = annotated_genes,
+            background_genes = background,
+            go_cache = go_cache
+        )
+        significant <- enrichment$term[enrichment$p_adj < enrich_fdr]
+        if (length(significant) >= 5L) {
+            target_terms <- significant
+        }
+    }
+    if (length(target_terms) > max_enriched_terms) {
+        frequencies <- term_counts[target_terms]
+        target_terms <- names(sort(
+            frequencies,
+            decreasing = TRUE
+        ))[seq_len(max_enriched_terms)]
+    }
+    target_terms
+}
+
+.score_data_driven_genes <- function(
+    genes,
+    target_terms,
+    go_cache,
+    ic_scores,
+    similarity_cache,
+    ancestor_map,
+    sim_method,
+    n_top_sims
+) {
+    scores <- numeric(length(genes))
+    for (i in seq_along(genes)) {
+        gene_terms <- go_cache[[genes[i]]]
+        if (is.null(gene_terms) || length(gene_terms) == 0L) {
+            next
+        }
+        comparison_terms <- setdiff(target_terms, gene_terms)
+        if (length(comparison_terms) == 0L) {
+            scores[i] <- min(length(gene_terms) / length(target_terms), 0.5)
+            next
+        }
+        scores[i] <- .mean_top_similarity(
+            gene_terms, comparison_terms, ic_scores, similarity_cache,
+            ancestor_map, sim_method, n_top_sims
+        )
+    }
+    scores
 }
 
 #' Compute data-driven biological relevance scores from GO annotations
@@ -317,7 +496,6 @@ compute_supervised_scores <- function(genes, target_terms, go_cache, ic_scores,
 #'
 #' @return Numeric vector of biological relevance scores.
 #'
-#' @importFrom stats quantile
 #' @keywords internal
 #'
 compute_data_driven_scores <- function(genes,
@@ -332,155 +510,28 @@ compute_data_driven_scores <- function(genes,
                                         max_enriched_terms = 100,
                                         n_top_sims = 5,
                                         ic_quantile = 0.5) {
-    n_genes <- length(genes)
-
-    # Default
-    if (is.null(enrichment_genes)) enrichment_genes <- genes
-
-    # Only annotated enrichment genes can drive enrichment
-    enrichment_genes <- intersect(enrichment_genes, names(go_cache))
-    if (length(enrichment_genes) < 10) {
-        warning(
-            "Fewer than 10 enrichment genes are annotated; returning zeros",
-            call. = FALSE
-        )
-        return(rep(0, n_genes))
+    if (is.null(enrichment_genes)) {
+        enrichment_genes <- genes
     }
-
-    # --- Step 1: IC-based specificity filter (BASED ON enrichment_genes) ---
-    all_terms <- unique(unlist(go_cache[enrichment_genes]))
-    if (length(all_terms) == 0) {
-        warning(
-            "No enrichment genes remain after the ontology filter",
-            call. = FALSE
-        )
-        return(rep(0, n_genes))
+    specific <- .specific_go_annotations(
+        enrichment_genes, go_cache, ic_scores, ic_quantile
+    )
+    if (is.null(specific)) {
+        return(rep(0, length(genes)))
     }
-
-    ic_available <- ic_scores[names(ic_scores) %in% all_terms]
-    if (length(ic_available) > 0 && ic_quantile > 0) {
-        ic_threshold <- quantile(
-            ic_available,
-            probs = ic_quantile,
-            na.rm = TRUE
-        )
-        specific_terms <- names(ic_available[ic_available >= ic_threshold])
-
-        go_cache_specific <- lapply(
-            go_cache,
-            function(terms) intersect(terms, specific_terms)
-        )
-        go_cache_specific <- go_cache_specific[lengths(go_cache_specific) > 0]
-    } else {
-        go_cache_specific <- go_cache
+    target_terms <- .select_data_driven_terms(
+        specific$annotated_genes, specific$go_cache,
+        min_term_freq, enrich_fdr, max_enriched_terms
+    )
+    if (length(target_terms) == 0L) {
+        return(rep(0, length(genes)))
     }
-
-    # --- Step 2: Identify candidate enriched terms ---
-    annotated_enrich <- intersect(enrichment_genes, names(go_cache_specific))
-    if (length(annotated_enrich) < 10) {
-        warning(
-            "Fewer than 10 enrichment genes pass the specificity filter",
-            call. = FALSE
-        )
-        return(rep(0, n_genes))
-    }
-
-    term_counts <- table(unlist(go_cache_specific[annotated_enrich]))
-    n_annotated <- length(annotated_enrich)
-
-    effective_min_freq <- if (is.null(min_term_freq)) {
-        max(5, ceiling(0.01 * n_annotated))
-    } else {
-        min_term_freq
-    }
-
-    frequent_terms <- names(term_counts[term_counts >= effective_min_freq])
-
-    if (length(frequent_terms) == 0) {
-        keep <- seq_len(min(20, length(term_counts)))
-        frequent_terms <- names(sort(term_counts, decreasing = TRUE))[keep]
-    }
-
-    # --- Step 2b: Fisher enrichment (selected = annotated_enrich) ---
-    enriched_terms <- frequent_terms
-
-    all_annotated <- names(go_cache_specific)
-    background_genes <- setdiff(all_annotated, annotated_enrich)
-
-    if (length(annotated_enrich) >= 30 && length(background_genes) >= 50) {
-        enrich_results <- test_go_enrichment(
-            selected_genes = annotated_enrich,
-            background_genes = background_genes,
-            go_cache = go_cache_specific
-        )
-
-        if (nrow(enrich_results) > 0) {
-            sig_terms <- enrich_results$term[enrich_results$p_adj < enrich_fdr]
-            if (length(sig_terms) >= 5) enriched_terms <- sig_terms
-            # else fall back to frequent_terms
-        }
-    }
-
-    # Cap at max_enriched_terms
-    if (length(enriched_terms) > max_enriched_terms) {
-        enriched_freqs <- term_counts[enriched_terms]
-        enriched_terms <- names(sort(
-            enriched_freqs,
-            decreasing = TRUE
-        ))[seq_len(max_enriched_terms)]
-    }
-
-    if (length(enriched_terms) == 0) {
-        return(rep(0, n_genes))
-    }
-
-    # --- Step 3: Score EACH gene in `genes` ---
-    scores <- numeric(n_genes)
-
-    for (i in seq_len(n_genes)) {
-        gene <- genes[i]
-        gene_terms <- go_cache_specific[[gene]]
-
-        if (is.null(gene_terms) || length(gene_terms) == 0) {
-            scores[i] <- 0
-            next
-        }
-
-        # Leave-one-out protection still applied per scored gene
-        target_for_gene <- setdiff(enriched_terms, gene_terms)
-
-        if (length(target_for_gene) == 0) {
-            scores[i] <- min(length(gene_terms) / length(enriched_terms), 0.5)
-            next
-        }
-
-        all_sims <- numeric(0)
-        for (gene_term in gene_terms) {
-            for (target_term in target_for_gene) {
-                sim <- get_or_compute_similarity(
-                    gene_term, target_term, ic_scores, similarity_cache,
-                    ancestor_map, sim_method
-                )
-                all_sims <- c(all_sims, sim)
-            }
-        }
-
-        if (length(all_sims) == 0) {
-            scores[i] <- 0
-        } else {
-            all_sims <- sort(all_sims, decreasing = TRUE)
-            top_k <- min(n_top_sims, length(all_sims))
-            scores[i] <- mean(all_sims[seq_len(top_k)])
-        }
-    }
-
-    return(scores)
+    .score_data_driven_genes(
+        genes, target_terms, specific$go_cache, ic_scores,
+        similarity_cache, ancestor_map, sim_method, n_top_sims
+    )
 }
 
-
-# =============================================================================
-# SEMANTIC SIMILARITY METRICS
-# =============================================================================
 
 #' Compute Semantic Similarity Between Two GO Terms
 #'
@@ -498,18 +549,13 @@ compute_data_driven_scores <- function(genes,
 compute_semantic_similarity <- function(term1, term2, ic_scores,
                                         ancestor_map = NULL,
                                         method = "resnik") {
-    # Identical terms have similarity 1.0 under all normalized metrics.
-    # (For all four methods: the MICA is the term itself, and the formulas
-    # all reduce to 1.0 when IC(MICA) = IC(t1) = IC(t2).)
     if (term1 == term2) {
         return(1.0)
     }
 
-    # --- Get ancestors for both terms ---
     ancestors1 <- get_go_ancestors(term1, ancestor_map)
     ancestors2 <- get_go_ancestors(term2, ancestor_map)
 
-    # --- Find MICA (Most Informative Common Ancestor) ---
     common_ancestors <- intersect(ancestors1, ancestors2)
     if (length(common_ancestors) == 0) {
         return(0.0)
@@ -522,7 +568,6 @@ compute_semantic_similarity <- function(term1, term2, ic_scores,
 
     mica_ic <- max(ic_scores[common_with_ic], na.rm = TRUE)
 
-    # --- Get IC of the two query terms ---
     ic1 <- ic_scores[term1]
     ic2 <- ic_scores[term2]
     if (is.na(ic1) || is.na(ic2)) {
@@ -532,7 +577,6 @@ compute_semantic_similarity <- function(term1, term2, ic_scores,
         return(0.0)
     }
 
-    # --- Dispatch to metric ---
     sim <- switch(method,
         resnik = sim_resnik(mica_ic, ic1, ic2),
         lin    = sim_lin(mica_ic, ic1, ic2),
@@ -541,7 +585,6 @@ compute_semantic_similarity <- function(term1, term2, ic_scores,
         stop(sprintf("Unknown similarity method: '%s'", method))
     )
 
-    # Clamp to [0, 1]
     return(max(0, min(sim, 1.0)))
 }
 
@@ -583,7 +626,7 @@ sim_lin <- function(mica_ic, ic1, ic2) {
 #' @keywords internal
 sim_jiang <- function(mica_ic, ic1, ic2) {
     distance <- ic1 + ic2 - 2 * mica_ic
-    distance <- max(0, distance) # Clamp for numerical safety
+    distance <- max(0, distance)
     1 / (1 + distance)
 }
 
@@ -602,10 +645,6 @@ sim_rel <- function(mica_ic, ic1, ic2) {
 }
 
 
-# =============================================================================
-# GO DAG TRAVERSAL
-# =============================================================================
-
 #' Get GO Ancestors
 #'
 #' Retrieves all ancestor terms of a GO term by traversing the GO DAG.
@@ -613,75 +652,34 @@ sim_rel <- function(mica_ic, ic1, ic2) {
 #'
 #' @param term GO term ID (e.g., "GO:0006955")
 #' @param ancestor_map Named list mapping GO terms to their ancestor vectors.
-#' @importFrom AnnotationDbi select
-#' @importFrom AnnotationDbi as.list
 #' @return Character vector of ancestor terms (always includes the term itself)
 #' @keywords internal
 get_go_ancestors <- function(term, ancestor_map = NULL) {
-    # 1. Use pre-built ancestor map if available (fastest)
-    if (!is.null(ancestor_map) && term %in% names(ancestor_map)) {
-        ancestors <- ancestor_map[[term]]
-        return(unique(c(term, ancestors)))
+    if (!is.null(ancestor_map)) {
+        return(unique(c(term, ancestor_map[[term]])))
     }
-
-    # 2. Fall back to GO.db if installed
-    if (requireNamespace("GO.db", quietly = TRUE) &&
-        requireNamespace("AnnotationDbi", quietly = TRUE)) {
-        tryCatch(
-            {
-                ontology <- tryCatch(
-                    {
-                        AnnotationDbi::select(GO.db::GO.db,
-                            keys = term,
-                            columns = "ONTOLOGY", keytype = "GOID"
-                        )$ONTOLOGY
-                    },
-                    error = function(e) NA
-                )
-
-                if (is.na(ontology)) {
-                    return(term)
-                }
-
-                ancestor_env <- switch(ontology,
-                    "BP" = if (
-                        exists("GOBPANCESTOR", where = "package:GO.db")
-                    ) {
-                        AnnotationDbi::as.list(GO.db::GOBPANCESTOR)
-                    } else {
-                        NULL
-                    },
-                    "MF" = if (
-                        exists("GOMFANCESTOR", where = "package:GO.db")
-                    ) {
-                        AnnotationDbi::as.list(GO.db::GOMFANCESTOR)
-                    } else {
-                        NULL
-                    },
-                    "CC" = if (
-                        exists("GOCCANCESTOR", where = "package:GO.db")
-                    ) {
-                        AnnotationDbi::as.list(GO.db::GOCCANCESTOR)
-                    } else {
-                        NULL
-                    },
-                    NULL
-                )
-
-                if (!is.null(ancestor_env) && term %in% names(ancestor_env)) {
-                    ancestors <- ancestor_env[[term]]
-                    ancestors <- ancestors[ancestors != "all"]
-                    return(unique(c(term, ancestors)))
-                }
-            },
-            error = function(e) {
-                # Fall through to default
-            }
-        )
+    if (!requireNamespace("GO.db", quietly = TRUE) ||
+        !requireNamespace("AnnotationDbi", quietly = TRUE)) {
+        return(term)
     }
-
-    # 3. Last resort: return just the term (similarity only for identical terms)
-    return(term)
+    ontology <- tryCatch(
+        AnnotationDbi::select(
+            GO.db::GO.db, keys = term,
+            columns = "ONTOLOGY", keytype = "GOID"
+        )$ONTOLOGY[[1L]],
+        error = function(error) NA_character_
+    )
+    if (is.na(ontology)) {
+        return(term)
+    }
+    ancestors <- tryCatch(
+        AnnotationDbi::as.list(get(
+            paste0("GO", ontology, "ANCESTOR"),
+            envir = asNamespace("GO.db")
+        ))[[term]],
+        error = function(error) NULL
+    )
+    unique(c(term, ancestors[ancestors != "all"]))
 }
 
 
@@ -692,7 +690,6 @@ get_go_ancestors <- function(term, ancestor_map = NULL) {
 #'
 #' @param organism Character, organism name
 #' @param use_cache Logical, use disk caching
-#' @importFrom AnnotationDbi as.list
 #' @return Named list mapping each GO term to its ancestor terms
 #' @keywords internal
 load_ancestor_map <- function(organism = "human", use_cache = TRUE) {
@@ -709,48 +706,38 @@ load_ancestor_map <- function(organism = "human", use_cache = TRUE) {
 
     if (use_cache) {
         cache_file <- file.path(get_cache_dir(), paste0(cache_key, ".rds"))
-        if (file.exists(cache_file)) {
-            ancestor_map <- readRDS(cache_file)
+        ancestor_map <- .read_cache_file(cache_file)
+        if (!is.null(ancestor_map)) {
             assign(cache_key, ancestor_map, envir = .geneselectr2_cache)
             return(ancestor_map)
         }
     }
 
+    if (getOption("geneselectr2.verbose", TRUE)) {
+        message("Building the GO ancestor map from GO.db...")
+    }
     ancestor_map <- list()
-
-    if (requireNamespace("GO.db", quietly = TRUE) &&
-        requireNamespace("AnnotationDbi", quietly = TRUE)) {
-        if (getOption("geneselectr2.verbose", TRUE)) {
-            message("Building the GO ancestor map from GO.db...")
-        }
-
-        for (ont_name in c("GOBPANCESTOR", "GOMFANCESTOR", "GOCCANCESTOR")) {
-            tryCatch(
-                {
-                    ont_data <- AnnotationDbi::as.list(
-                        get(ont_name, envir = asNamespace("GO.db"))
-                    )
-                    for (term in names(ont_data)) {
-                        ancestors <- ont_data[[term]]
-                        ancestors <- ancestors[ancestors != "all"]
-                        ancestor_map[[term]] <- ancestors
-                    }
-                },
-                error = function(e) {
-            stop(
-                sprintf("Could not load %s: %s", ont_name, conditionMessage(e)),
-                call. = FALSE
-            )
-                }
-            )
-        }
-
-        if (getOption("geneselectr2.verbose", TRUE)) {
-            message(sprintf(
-                "  Loaded ancestors for %d GO terms",
-                length(ancestor_map)
-            ))
-        }
+    for (ontology in c("BP", "MF", "CC")) {
+        object_name <- paste0("GO", ontology, "ANCESTOR")
+        ontology_map <- tryCatch(
+            AnnotationDbi::as.list(get(
+                object_name, envir = asNamespace("GO.db")
+            )),
+            error = function(error) {
+                stop(
+                    "Could not load ", object_name, ": ",
+                    conditionMessage(error), call. = FALSE
+                )
+            }
+        )
+        ontology_map <- lapply(ontology_map, setdiff, "all")
+        ancestor_map[names(ontology_map)] <- ontology_map
+    }
+    if (getOption("geneselectr2.verbose", TRUE)) {
+        message(sprintf(
+            "  Loaded ancestors for %d GO terms",
+            length(ancestor_map)
+        ))
     }
 
     if (length(ancestor_map) == 0L) {
@@ -759,17 +746,12 @@ load_ancestor_map <- function(organism = "human", use_cache = TRUE) {
 
     if (use_cache && length(ancestor_map) > 0) {
         cache_file <- file.path(get_cache_dir(), paste0(cache_key, ".rds"))
-        saveRDS(ancestor_map, cache_file)
+        .write_cache_file(ancestor_map, cache_file)
         assign(cache_key, ancestor_map, envir = .geneselectr2_cache)
     }
-
-    return(ancestor_map)
+    ancestor_map
 }
 
-
-# =============================================================================
-# INFORMATION CONTENT AND ENRICHMENT
-# =============================================================================
 
 #' Compute Information Content
 #'
@@ -803,8 +785,6 @@ compute_information_content <- function(go_cache) {
 #' @param selected_genes Character vector of selected gene names
 #' @param background_genes Character vector of background gene names
 #' @param go_cache GO annotations
-#' @importFrom stats fisher.test
-#' @importFrom stats p.adjust
 #' @return Data frame with columns: term, p_value, odds_ratio, n_selected,
 #'   n_background, p_adj (BH-adjusted)
 #' @keywords internal
@@ -826,7 +806,6 @@ test_go_enrichment <- function(selected_genes, background_genes, go_cache) {
     n_sel <- length(selected_genes)
     n_bg <- length(background_genes)
 
-    # Use vapply instead of sapply for type safety
     results <- lapply(selected_terms, function(term) {
         n_sel_with <- sum(vapply(
             go_cache[selected_genes],
@@ -842,7 +821,9 @@ test_go_enrichment <- function(selected_genes, background_genes, go_cache) {
             n_bg_with,  n_bg - n_bg_with
         ), nrow = 2)
 
-        test_result <- fisher.test(contingency, alternative = "greater")
+        test_result <- stats::fisher.test(
+            contingency, alternative = "greater"
+        )
 
         data.frame(
             term = term,
@@ -855,7 +836,7 @@ test_go_enrichment <- function(selected_genes, background_genes, go_cache) {
     })
 
     results_df <- do.call(rbind, results)
-    results_df$p_adj <- p.adjust(results_df$p_value, method = "BH")
+    results_df$p_adj <- stats::p.adjust(results_df$p_value, method = "BH")
     results_df <- results_df[order(results_df$p_value), ]
 
     return(results_df)
@@ -916,7 +897,6 @@ multilayer_bio_scorer <- function(
         stop("disease_term is required for the MSigDB source")
     }
 
-    # Validate: GO layer needs target_terms in supervised mode
     if ("go" %in% layers && go_mode == "supervised" &&
         (is.null(target_terms) || length(target_terms) == 0)) {
         stop("target_terms required for GO layer in supervised mode")
@@ -924,7 +904,6 @@ multilayer_bio_scorer <- function(
 
     layer_scores <- list()
 
-    # --- Layer 1: GO semantic similarity ---
     if ("go" %in% layers) {
         if (verbose) {
             message("  GO layer: computing semantic similarity...\n")
@@ -947,7 +926,6 @@ multilayer_bio_scorer <- function(
         }
     }
 
-    # --- Layer 2: MSigDB gene set membership ---
     if ("msigdb" %in% layers) {
         if (verbose) {
             message(sprintf(
@@ -973,7 +951,6 @@ multilayer_bio_scorer <- function(
         }
     }
 
-    # --- Combine layers ---
     if (length(layer_scores) == 0) {
         stop("No requested biological layer produced a score vector")
     }
@@ -981,7 +958,6 @@ multilayer_bio_scorer <- function(
     if (length(layer_scores) == 1) {
         combined <- layer_scores[[1]]
     } else {
-        # Geometric mean across active layers
         eps <- 1e-10
         n_layers <- length(layer_scores)
         log_sum <- numeric(n_genes)
@@ -990,8 +966,7 @@ multilayer_bio_scorer <- function(
         }
         combined <- exp(log_sum / n_layers)
 
-        # The offset keeps log() finite. Genes without evidence in any layer
-        # remain zero.
+        ## The offset keeps log() finite. Genes without evidence remain zero.
         layer_mat <- do.call(cbind, layer_scores)
         no_evidence <- rowSums(layer_mat > 0) == 0
         combined[no_evidence] <- 0
@@ -1014,7 +989,6 @@ multilayer_bio_scorer <- function(
         ))
     }
 
-    # Attach layer-level scores as an attribute for diagnostics
     attr(combined, "layer_scores") <- layer_scores
     attr(combined, "layers_used") <- names(layer_scores)
 
@@ -1022,17 +996,11 @@ multilayer_bio_scorer <- function(
 }
 
 
-# =============================================================================
-# LAYER 2: MSigDB GENE SET MEMBERSHIP
-# =============================================================================
-
 #' Score Genes by MSigDB Gene Set Membership
 #'
 #' For a given disease keyword, finds all matching gene sets in MSigDB's
-#' curated collections and scores each gene by how many of those sets
-#' contain it. This captures experimental replication evidence: a gene
-#' appearing in many published breast cancer gene sets has stronger
-#' evidence than one appearing in one gene set.
+#' curated collections and scores each gene by the number of matching sets that
+#' contain it.
 #'
 #' @param genes Character vector of gene symbols
 #' @param disease_keyword Character, disease name to search in gene set names
@@ -1044,9 +1012,8 @@ multilayer_bio_scorer <- function(
 #'   Hallmark gene sets (50 biological states).
 #' @param organism Character, species name for msigdbr. Default: "Homo sapiens".
 #' @param verbose Logical, print progress.
-#' @return Numeric vector (one per gene). Raw count of disease-relevant
-#'   gene sets containing each gene, log2-transformed. Not yet
-#'   percentile-normalized.
+#' @return Numeric vector (one per gene). The number of matching gene sets is
+#'   transformed as `log2(count + 1)`.
 #'
 #' @keywords internal
 score_msigdb_layer <- function(genes,
@@ -1063,13 +1030,10 @@ score_msigdb_layer <- function(genes,
         )
     }
 
-    # --- Retrieve MSigDB gene sets for the specified categories ---
     all_sets <- do.call(rbind, lapply(categories, function(category) {
         tryCatch(
             {
-                # msigdbr >= 10 renamed `category` to `collection`. Select the
-                # Select the argument name supported by the installed version.
-                # same requested collection without a deprecation warning.
+                ## msigdbr 10.0.0 renamed `category` to `collection`.
                 msigdb_args <- list(species = organism)
                 if ("collection" %in% names(formals(msigdbr::msigdbr))) {
                     msigdb_args$collection <- category
@@ -1097,13 +1061,9 @@ score_msigdb_layer <- function(genes,
         )
     }
 
-    # --- Filter to disease-relevant gene sets by keyword matching ---
-    # Match against gene set name (gs_name) - these encode the study/context,
-    # e.g., "CHARAFE_BREAST_CANCER_LUMINAL_VS_BASAL_UP"
     keyword_pattern <- gsub("\\s+", ".*", tolower(disease_keyword))
     name_match <- grepl(keyword_pattern, tolower(all_sets$gs_name))
 
-    # Also match against gene set description if available
     if ("gs_description" %in% colnames(all_sets)) {
         desc_match <- grepl(keyword_pattern, tolower(all_sets$gs_description))
         disease_rows <- name_match | desc_match
@@ -1129,7 +1089,6 @@ score_msigdb_layer <- function(genes,
         ))
     }
 
-    # --- Count: for each gene, how many disease-relevant sets contain it? ---
     gene_set_counts <- table(disease_sets$gene_symbol)
 
     scores <- numeric(n_genes)
@@ -1137,8 +1096,6 @@ score_msigdb_layer <- function(genes,
     matched <- intersect(genes, names(gene_set_counts))
     scores[matched] <- as.numeric(gene_set_counts[matched])
 
-    # Log2-transform to compress range
-    # (some genes like TP53 appear in hundreds of sets)
     scores <- log2(scores + 1)
 
     return(scores)

@@ -16,8 +16,8 @@ contribution and disease association.}
 
 \item{comparison_label}{Label for the optional comparison-count series.}
 
-\item{colours}{Colours for GeneSelectR 2.0, the comparison series, recurrence,
-contribution and association.}
+\item{colours}{Colours for GeneSelectR 2.0, the comparison series,
+recurrence, contribution and association.}
 }
 \value{
 The displayed data, invisibly.

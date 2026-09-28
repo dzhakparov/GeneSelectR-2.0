@@ -4,6 +4,8 @@
 ^\.git$
 ^\.Rcheck$
 ^GeneSelectR2\.Rcheck$
+^GeneSelectR2\.BiocCheck$
+^[^/]+_[0-9.-]+\.tar\.gz$
 ^\.DS_Store$
 ^\.Rhistory$
 ^LICENSE\.md$
@@ -11,3 +13,4 @@
 ^\.github$
 ^doc$
 ^Meta$
+^apps$

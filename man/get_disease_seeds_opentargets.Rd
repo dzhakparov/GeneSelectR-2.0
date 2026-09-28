@@ -20,8 +20,7 @@ get_disease_seeds_opentargets(
 (default: 100)}
 
 \item{min_score}{Numeric, drop associations below this overall score
-(default: 0.1). Applied after the top-N cut, so a disease with weak
-associations yields fewer seeds rather than padding with noise.}
+(default: 0.1). Applied after the top-N query.}
 
 \item{use_cache}{Logical, read/write the frozen seed file (default: TRUE)}
 
@@ -36,10 +35,9 @@ frame indicates that the resolved disease has no qualifying associations.
 }
 \description{
 Queries the Open Targets Platform for the top targets associated with a
-disease, ranked by overall association score. Results are frozen to the
-package cache keyed by (EFO ID, max_seeds, min_score) so the API is called
-at most once per parameter combination - subsequent runs load from disk and
-are fully reproducible offline.
+disease, ranked by overall association score. Results are stored in the
+package cache with the ontology identifier and query parameters. Cached
+results support repeated analyses without a new request.
 }
 \examples{
 if (interactive()) {
